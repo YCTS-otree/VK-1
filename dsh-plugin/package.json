@@ -1,0 +1,21 @@
+{
+  "name": "dsh-vk1-balance-widget",
+  "version": "0.2.0",
+  "private": true,
+  "description": "VK-1 余额挂件（网页版）：上游 D-16BVM/v11 的纯插件移植——角色举黑屏平板显示 DeepSeek 余额，逐分扣费红闪/震动/飘字/音效，四种表情，充值掉米饭盆（拖到身上才入账），铁盆可扣头，火控雷达目标名牌",
+  "type": "module",
+  "exports": {
+    ".": "./index-v11.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" }
+  },
+  "files": [
+    "index-v11.js",
+    "widget.js",
+    "cordis.patch.yml",
+    "assets"
+  ],
+  "license": "MIT"
+}
