@@ -15,7 +15,14 @@ for (const file of fs.readdirSync(path.join(source, 'assets'))) {
   files.push(`assets/${file}`)
 }
 // Read only explicitly selected distribution files; credentials and keys are excluded.
-const contents = files.map(file => [file, fs.readFileSync(path.join(source, file))])
+const contents = files.map(file => {
+  let data = fs.readFileSync(path.join(source, file))
+  if (!/\.(png|mp3)$/.test(file)) {
+    // Match Git's LF text policy before hashing, including on Windows checkouts.
+    data = Buffer.from(data.toString('utf8').replace(/\r\n?/g, '\n'), 'utf8')
+  }
+  return [file, data]
+})
 const checksums = {}
 fs.mkdirSync(destination, { recursive: true })
 for (const [file, data] of contents) {

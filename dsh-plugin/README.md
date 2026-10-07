@@ -2,7 +2,7 @@
 
 把大肥鱼桌宠搬进 DSH：她举着平板显示 DeepSeek 余额，花钱时挨打，充值时掉米饭盆。
 
-**插件版本：1.0.1** · 维护者：[YCTS-otree](https://github.com/YCTS-otree) · [报告 BUG / 提建议](https://github.com/YCTS-otree/VK-1/issues) · [更新记录](https://github.com/YCTS-otree/VK-1/blob/main/CHANGELOG.md)
+**插件版本：1.0.2** · 维护者：[YCTS-otree](https://github.com/YCTS-otree) · [报告 BUG / 提建议](https://github.com/YCTS-otree/VK-1/issues) · [更新记录](https://github.com/YCTS-otree/VK-1/blob/main/CHANGELOG.md)
 
 本项目由 [VKmich16/VK-1](https://github.com/VKmich16/VK-1) 的 `大肥鱼桌宠改_D-16BVM` 移植而来，作为 DSH bundle 在网页界面中运行。美术、音效与原版行为来自上游；插件移植和 DSH 兼容由本仓库维护。
 
@@ -41,7 +41,7 @@ DSH 需要已配置 `DEEPSEEK_API_KEY` 凭据。插件通过 DSH 凭据服务读
 
 通过现有 DSH profile 的包管理流程解析依赖，再重启 Web 服务。仅运行 `dsh plugin --profile web add <dsh-plugin 绝对路径>` 不会完成 bundle 登记，推荐仍让 DSH 的安装工具处理。
 
-独立发布包在 `Release/v1.0.1/dsh-plugin/`，也可交给同一个安装工具。
+独立发布包在 `Release/v1.0.2/dsh-plugin/`，也可交给同一个安装工具。
 
 </details>
 
@@ -86,7 +86,7 @@ DSH 需要已配置 `DEEPSEEK_API_KEY` 凭据。插件通过 DSH 凭据服务读
 
 ## 版本与开发
 
-插件版本以 `dsh-plugin/package.json` 为准，规范化基线为 **1.0.0**（前身版本为 0.2.0），当前维护版本为 **1.0.1**。新增功能递增 MINOR，修复和小改进递增 PATCH，MAJOR 由维护者决定。
+插件版本以 `dsh-plugin/package.json` 为准，规范化基线为 **1.0.0**（前身版本为 0.2.0），当前维护版本为 **1.0.2**。新增功能递增 MINOR，修复和小改进递增 PATCH，MAJOR 由维护者决定。
 
 上游文档的 **v11** 是来源标记，与本插件版本无关。`index-v11.js` 的文件名保留用于 Loader 缓存兼容。
 
@@ -99,7 +99,7 @@ npm --prefix dsh-plugin run release
 
 离线检查覆盖语法、宿主入口、素材路由、页面脚本注入去重和卸载清理，不读取个人凭据、不访问真实余额接口。UI 变更仍需在 DSH 中检查拖拽、缩放、动画和外观切换。
 
-发布工具输出 `Release/v<版本>/dsh-plugin/` 与 SHA-256 清单，已有版本目录拒绝覆盖。版本更新同步 README 和 CHANGELOG。见[维护规则](https://github.com/YCTS-otree/VK-1/blob/main/AGENTS.md)和[贡献说明](https://github.com/YCTS-otree/VK-1/blob/main/CONTRIBUTING.md)。
+发布工具输出 `Release/v<版本>/dsh-plugin/` 与 SHA-256 清单，已有版本目录拒绝覆盖。推荐使用 1.0.2 或更新版本；1.0.0/1.0.1 的历史 SHA-256 清单受 Windows 换行影响，不作为完整性校验依据。版本更新同步 README 和 CHANGELOG。见[维护规则](https://github.com/YCTS-otree/VK-1/blob/main/AGENTS.md)和[贡献说明](https://github.com/YCTS-otree/VK-1/blob/main/CONTRIBUTING.md)。
 
 ## 来源与许可
 

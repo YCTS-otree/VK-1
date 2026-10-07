@@ -3,3 +3,4 @@
 *.js text eol=lf
 *.mjs text eol=lf
 *.yml text eol=lf
+LICENSE text eol=lf

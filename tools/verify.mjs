@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { spawnSync } from 'node:child_process'
+import crypto from 'node:crypto'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const bundle = path.join(root, 'dsh-plugin')
@@ -48,4 +49,16 @@ assert.equal(disposed, routes.size + 1)
 for (const file of ['README.md', 'dsh-plugin/README.md', 'CHANGELOG.md']) {
   assert.ok(fs.readFileSync(path.join(root, file), 'utf8').includes(pkg.version), `${file}: version mismatch`)
 }
-console.log(`Verified plugin ${pkg.version}: syntax, entry, assets, routes, injection and cleanup.`)
+const release = path.join(root, 'Release', `v${pkg.version}`)
+if (fs.existsSync(release)) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(release, 'manifest.json'), 'utf8'))
+  assert.equal(manifest.version, pkg.version)
+  const allowed = new Set(['package.json', 'README.md', 'LICENSE', ...pkg.files.filter(file => file !== 'assets'), ...fs.readdirSync(path.join(bundle, 'assets')).map(file => `assets/${file}`)])
+  assert.equal(Object.keys(manifest.sha256).length, allowed.size)
+  for (const [file, checksum] of Object.entries(manifest.sha256)) {
+    assert.ok(file.startsWith('dsh-plugin/') && allowed.has(file.slice('dsh-plugin/'.length)), `unexpected release path: ${file}`)
+    const data = fs.readFileSync(path.join(release, file))
+    assert.equal(crypto.createHash('sha256').update(data).digest('hex'), checksum, `release checksum: ${file}`)
+  }
+}
+console.log(`Verified plugin ${pkg.version}: syntax, entry, assets, routes, injection, cleanup and current release checksums.`)
