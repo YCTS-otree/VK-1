@@ -2,7 +2,7 @@
 
 把大肥鱼桌宠搬进 DSH：她举着平板显示 DeepSeek 余额，花钱时挨打，充值时掉米饭盆。
 
-**插件版本：1.0.0** · 维护者：[YCTS-otree](https://github.com/YCTS-otree) · [报告 BUG / 提建议](https://github.com/YCTS-otree/VK-1/issues) · [更新记录](https://github.com/YCTS-otree/VK-1/blob/main/CHANGELOG.md)
+**插件版本：1.0.1** · 维护者：[YCTS-otree](https://github.com/YCTS-otree) · [报告 BUG / 提建议](https://github.com/YCTS-otree/VK-1/issues) · [更新记录](https://github.com/YCTS-otree/VK-1/blob/main/CHANGELOG.md)
 
 本项目由 [VKmich16/VK-1](https://github.com/VKmich16/VK-1) 的 `大肥鱼桌宠改_D-16BVM` 移植而来，作为 DSH bundle 在网页界面中运行。美术、音效与原版行为来自上游；插件移植和 DSH 兼容由本仓库维护。
 
@@ -41,7 +41,7 @@ DSH 需要已配置 `DEEPSEEK_API_KEY` 凭据。插件通过 DSH 凭据服务读
 
 通过现有 DSH profile 的包管理流程解析依赖，再重启 Web 服务。仅运行 `dsh plugin --profile web add <dsh-plugin 绝对路径>` 不会完成 bundle 登记，推荐仍让 DSH 的安装工具处理。
 
-独立发布包在 `Release/v1.0.0/dsh-plugin/`，也可交给同一个安装工具。
+独立发布包在 `Release/v1.0.1/dsh-plugin/`，也可交给同一个安装工具。
 
 </details>
 
@@ -81,13 +81,12 @@ DSH 需要已配置 `DEEPSEEK_API_KEY` 凭据。插件通过 DSH 凭据服务读
 | `Release/v<版本>/` | 各版本独立发布包与 SHA-256 清单 |
 | `CHANGELOG.md` | 插件更新记录 |
 | `AGENTS.md` | 项目维护规则 |
-| `README.upstream.md` | 整理前的原桌宠说明，保留供追溯 |
 
-仓库内的 `大肥鱼桌宠*`、`原版（Windows版）/`、`dsh-balance-pet-macos/` 和 `output/` 为继承的桌面端代码及素材记录，**不属于本插件的维护或安装入口**。保留原路径和历史，日常使用只需关注上表中的插件目录。
+本仓库只保留 DSH 插件。Windows/macOS 原生桌宠代码与构建工作流已移除；需要桌面版请访问[原作者仓库](https://github.com/VKmich16/VK-1)。历史内容仍可从 Git 提交记录追溯。
 
 ## 版本与开发
 
-插件版本以 `dsh-plugin/package.json` 为准，本次按维护规则建立 **1.0.0** 基线，前身版本为 0.2.0。新增功能递增 MINOR，修复和小改进递增 PATCH，MAJOR 由维护者决定。
+插件版本以 `dsh-plugin/package.json` 为准，规范化基线为 **1.0.0**（前身版本为 0.2.0），当前维护版本为 **1.0.1**。新增功能递增 MINOR，修复和小改进递增 PATCH，MAJOR 由维护者决定。
 
 上游文档的 **v11** 是来源标记，与本插件版本无关。`index-v11.js` 的文件名保留用于 Loader 缓存兼容。
 
@@ -104,6 +103,6 @@ npm --prefix dsh-plugin run release
 
 ## 来源与许可
 
-感谢 **VKmich16** 提供原版桌宠、美术、音效与行为设计。插件移植自 `大肥鱼桌宠改_D-16BVM`；仓库中的桌面端历史内容不包含在插件发布包中。
+感谢 **VKmich16** 提供原版桌宠、美术、音效与行为设计。插件移植自 `大肥鱼桌宠改_D-16BVM`，本仓库仅分发插件所需代码与素材。
 
-插件和随附素材按 [MIT 许可](LICENSE)分发，保留原作者与移植者的版权声明。授权说明见[上游 README](https://github.com/VKmich16/VK-1#readme)及[作者授权回复](https://github.com/VKmich16/VK-1/issues/3)。其他平台历史实现的许可以各自原说明为准。
+插件和随附素材按 [MIT 许可](LICENSE)分发，保留原作者与移植者的版权声明。授权说明见[上游 README](https://github.com/VKmich16/VK-1#readme)及[作者授权回复](https://github.com/VKmich16/VK-1/issues/3)。
