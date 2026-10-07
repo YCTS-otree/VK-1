@@ -40,13 +40,26 @@
     var path = String(src || '').split('?')[0]
     if (!path) return false
     if (SELF_SRC) return path === String(SELF_SRC).split('?')[0]
-    return /dsh-vk1\/widget\.js$/.test(path)      // no currentScript: fall back to our route
+    // Heuristic last resort, used only when currentScript is unavailable: any script whose
+    // path ends in our route is treated as ours. It can in principle misattribute an
+    // unrelated script served at the same path, which is why identity normally comes from
+    // currentScript instead.
+    return /dsh-vk1\/widget\.js$/.test(path)
   }
   function showFatal(text) {
     try {
-      if (document.getElementById('dshvk1-fatal')) return
+      var existing = document.getElementById('dshvk1-fatal')
+      if (existing) {
+        // Keep the single box but do not swallow the new failure: show the latest message
+        // plus how many have been seen. Stacking a box per error was the original bug.
+        var n = (parseInt(existing.getAttribute('data-count') || '1', 10) || 1) + 1
+        existing.setAttribute('data-count', String(n))
+        existing.textContent = 'VK-1 widget error ×' + n + '（点击关闭）:\n' + text
+        return
+      }
       var d = document.createElement('div')
       d.id = 'dshvk1-fatal'
+      d.setAttribute('data-count', '1')
       d.title = '点击关闭'
       d.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:2147483600;max-width:74vw;' +
         'background:#8d1111;color:#fff;font:16px/1.5 Consolas,monospace;padding:12px 14px;' +
