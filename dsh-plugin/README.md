@@ -1,90 +1,109 @@
-# DSH 余额挂件 · 插件版（VK-1 网页插件）
+# VK-1 · DSH 余额挂件
 
-> **这是上游 [VKmich16/VK-1](https://github.com/VKmich16/VK-1) 的「插件实现」，不是原版桌面小程序。**
-> 原版是一个独立的桌面宠物（macOS Swift App / Windows PowerShell 窗口）；
-> 本仓库把它的全部行为移植成 **DSH（DeepSeek Harness）网页插件**，在 DSH Web 界面里运行。
+把大肥鱼桌宠搬进 DSH：她举着平板显示 DeepSeek 余额，花钱时挨打，充值时掉米饭盆。
 
-## 这是什么
+**插件版本：1.0.0** · 维护者：[YCTS-otree](https://github.com/YCTS-otree) · [报告 BUG / 提建议](https://github.com/YCTS-otree/VK-1/issues) · [更新记录](https://github.com/YCTS-otree/VK-1/blob/main/CHANGELOG.md)
 
-一个 DSH bundle 插件：角色举着黑屏平板显示 DeepSeek 余额。逐分扣费时红闪 + 震动 + 飘字 + 打击音效；充值不掉数字而是掉一盆米饭，拖到她身上才入账；吃掉米饭盆会掉出铁盆，可以扣在她头上；有米盆时会出现火控雷达目标名牌。
+本项目由 [VKmich16/VK-1](https://github.com/VKmich16/VK-1) 的 `大肥鱼桌宠改_D-16BVM` 移植而来，作为 DSH bundle 在网页界面中运行。美术、音效与原版行为来自上游；插件移植和 DSH 兼容由本仓库维护。
 
-移植自上游最新变体 `大肥鱼桌宠改_D-16BVM`（说明文档自称 v11），保留它全部可观察行为与手感参数。
+> **移植版的问题请在本仓库反馈。** 请勿到原作者仓库提交 DSH 插件 BUG，以免打扰桌宠原版的维护。
 
-## 与桌宠原版的区别
+## 安装
 
-| | 桌宠原版 | 本插件 |
-| --- | --- | --- |
-| 运行宿主 | 独立进程（PowerShell / Swift） | DSH Web 页面内 |
-| 窗口 | 原生置顶窗口 + 托盘 + 屏幕角吸附 + 透明像素点击穿透 | 页面内挂件（无置顶/托盘；透明像素仍可穿透） |
-| 素材来源 | `%USERPROFILE%\.dsh\.credentials.yaml` | DSH 凭据服务（`DEEPSEEK_API_KEY`） |
-| 多外观协同 | 无 | 接入 DSH「切换外观」：可与其它余额显示外观一键互切 |
+最简单的方式，是让 DSH 给自己安装插件。
 
-定位沿用 DSH 生态的惯例：四边四分之一吸附（可组合成角落）、锚点持久化、滚动条避让；吸附到右边缘时镜像美术（**连同铁盆等道具一起镜像**，否则盆会歪向和镜像后的头相反的方向），平板文字重算仿射矩阵保持正向。
-
-## 安装（推荐）
-
-1. 打开 DSH，**把工作区设为 DSH 目录**
+1. 打开 DSH，将工作区设为 **DSH 目录**。
 2. 对 DeepSeek 说：
 
    > 安装这个插件：https://github.com/YCTS-otree/VK-1
 
-   （插件包在仓库的 `dsh-plugin/` 子目录；clone 之后把那个目录的路径交给 `plugin_manager` 的 `install_bundle`。）
-3. 重启 `dsh web`，然后刷新页面
+3. 安装完成后，重启 `dsh web`，再刷新页面。
 
-**需要**：DSH 已配置 `DEEPSEEK_API_KEY` 凭据。不需要平台会话令牌。
-
-> 第 2 步是最省事的方式：让 agent 用 `plugin_manager` 的 `install_bundle` 装，它会一次写好 profile 的 `dependencies` 与 `dsh.bundles`。命令行等价物是
->
-> ```
-> dsh plugin --profile web add <dsh-plugin 目录的绝对路径>
-> ```
->
-> （该子命令已实测：`dsh plugin --profile web --version` 返回 pnpm `11.22.0`、退出码 0，`list --depth 0` 能列出 profile 依赖——它就是把参数转交给 profile 里的 pnpm。注意**只跑这一条还不够**：还要把这个包登记为 bundle（加进 profile 的 `dsh.bundles`，或写一条 loader 补丁行），否则不会被装配；让 agent 装就是让它代劳这一步。）
+DSH 需要已配置 `DEEPSEEK_API_KEY` 凭据。插件通过 DSH 凭据服务读取，不需要额外的平台会话令牌，也不用把 Key 发到聊天里。
 
 <details>
-<summary>手工安装（不想让 agent 代劳时）</summary>
+<summary>给安装 agent 的说明 / 手动安装</summary>
 
-把 `dsh-plugin/` 放到一个固定位置，然后在 DSH profile 的 `package.json` 里加上：
+可安装的 bundle 位于 `dsh-plugin/`。请把这个子目录的绝对路径交给 `plugin_manager` 的 `install_bundle`，同时登记 profile 依赖和 `dsh.bundles`。
+
+手动管理 profile 时，依赖与 bundle 配置示意如下。需要合并进现有配置，勿覆盖其他插件：
 
 ```json
-"dependencies": { "dsh-vk1-balance-widget": "link:<绝对路径>/dsh-plugin" },
-"dsh": { "bundles": ["dsh-vk1-balance-widget"] }
+{
+  "dependencies": {
+    "dsh-vk1-balance-widget": "link:<仓库绝对路径>/dsh-plugin"
+  },
+  "dsh": {
+    "bundles": ["dsh-vk1-balance-widget"]
+  }
+}
 ```
 
-再建一个 `node_modules/dsh-vk1-balance-widget` 指向该目录的 junction，重启 `dsh web`。
+通过现有 DSH profile 的包管理流程解析依赖，再重启 Web 服务。仅运行 `dsh plugin --profile web add <dsh-plugin 绝对路径>` 不会完成 bundle 登记，推荐仍让 DSH 的安装工具处理。
+
+独立发布包在 `Release/v1.0.0/dsh-plugin/`，也可交给同一个安装工具。
+
 </details>
 
-## 功能
+## 能做什么
 
-- 余额：60s 内缓存 + 点击手动刷新；接口抖动时沿用上次读数
-- 逐分结算：每 0.01 元一次完整动画（红闪 / 震动 / 飘字 / 音效），0.2s 一次，单次轮询最多排队 40 次
-- 四种表情按优先级自动切换：铁盆扣头（且无米盆）> 扣费中（含 1s 保持）> 米盆闲置 10s > 常态
-- 充值 = 掉米饭盆：自由落体 + 弹跳（按落高 0/1/2/3 次）、可拖拽、盆间有碰撞体积；拖到她身上入账并冒爱心
-- 铁盆：吃掉米盆后掉出，可拖到她头上戴住；双击她的头取下
-- 火控雷达名牌：绿括号 + 类型 + 距离 / 接近率 / 相对高度 + 方向环；任一盆闲置满 10s 全部锁定，1s 后磁吸入账
-- 菜单：立即刷新余额 / 测试一次扣费 / 测试充值动画（掉盆、开雷达）/ 演示连续扣费 / 尺寸 128·192·256·384·512 与自定义 px / 声音与音量 / 位置与滚动条避让
+- **余额平板**：显示 DeepSeek 余额，支持手动刷新；接口短暂抖动时尽量保留上次读数，宿主接口缓存 8 秒。
+- **逐分扣费**：每下降 0.01 元播放一次红闪、震动、飘字与打击音效，间隔 0.2 秒，单轮最多排队 40 次。
+- **充值掉饭盆**：饭盆自由落下、弹跳，可以拖动；拖到角色身上才完成入账动画。
+- **铁盆与表情**：吃完饭留下铁盆，拖到头上可以戴住，双击头部取下；四种表情随状态切换。
+- **火控雷达**：饭盆闲置 10 秒后触发锁定，随后磁吸入账。
+- **位置与外观**：拖动定位、边缘吸附、位置记忆、右侧镜像和滚动条避让；菜单可调大小、声音和音量，也可演示扣费和充值。
+
+## 与桌宠原版的区别
+
+| 项目 | DSH 插件版 | 桌宠原版 |
+| --- | --- | --- |
+| 运行位置 | DSH Web 页面内 | 独立桌面窗口 |
+| 余额凭据 | DSH 凭据服务 | 原桌宠自己的配置流程 |
+| 吸附范围 | 网页窗口边缘 | 原生桌面窗口范围 |
+| 桌面置顶与托盘 | 无 | 由桌面版实现 |
+| 反馈入口 | [本仓库 Issues](https://github.com/YCTS-otree/VK-1/issues) | [原作者仓库](https://github.com/VKmich16/VK-1) |
 
 ## 已知问题
 
-- **「切换外观」目前需要刷新页面**：停用 / 启用外观不会重新挂载挂件，切换后请按一次 F5。根因在注入路径，待修。
-- 素材授权状态见下一节。
+**切换外观后可能需要刷新页面。** 当前停用 / 启用流程不会重新挂载挂件，切换后请按 F5。这是移植版待处理的兼容问题。
 
-## 维护
+提交 BUG 请附插件、DSH、浏览器版本与复现步骤；不要上传 API Key、凭据文件、私钥或未脱敏日志。
 
-我会持续维护本插件实现：跟随上游的行为变更同步移植，并处理 DSH 侧的兼容问题。
+## 仓库导航
 
-## 致谢与素材
+日常开发统一使用 **`main`**。`dsh-plugin` 分支暂时兼容原作者 README 的旧链接，不作为第二条开发线；请以仓库首页为准，原作者更新链接后可删除兼容分支。
 
-美术、音效、结算节奏与全部手感参数都属于上游作者 **VKmich16**（[VKmich16/VK-1](https://github.com/VKmich16/VK-1)）。本仓库只做形态移植。
+| 路径 | 用途 |
+| --- | --- |
+| `dsh-plugin/` | 正在维护的插件源码、素材和安装入口 |
+| `tools/` | 离线检查与发布工具 |
+| `Release/v<版本>/` | 各版本独立发布包与 SHA-256 清单 |
+| `CHANGELOG.md` | 插件更新记录 |
+| `AGENTS.md` | 项目维护规则 |
+| `README.upstream.md` | 整理前的原桌宠说明，保留供追溯 |
 
-> **素材与授权**：上游仓库已采用 **MIT 许可**，并在其 README 的「许可」章节里**明确列出了覆盖范围**——本插件再分发的每一项素材都在清单内：
->
-> | 本插件文件 | 上游路径 | 覆盖依据 |
-> | --- | --- | --- |
-> | `assets/expression_1x/2x.png` | `大肥鱼桌宠改_D-16BVM/sprites/expression_*.png` | MIT 清单「`sprites/*.png`」 |
-> | `assets/rice.png`、`assets/iron_bowl.png` | 同目录 | MIT 清单逐项列出 |
-> | `assets/hit.mp3`、`assets/feed.mp3` | 同目录 | MIT 清单逐项列出 |
->
-> 上游原文：**「可以自由使用、修改、再分发，甚至商用，只要保留版权声明即可」**；以及「**想把这里的素材用在自己的项目（包括移植到别的平台）：注明来源即可，无需另行询问**」。作者另在 [issue #3](https://github.com/VKmich16/VK-1/issues/3) 下以仓库所有者身份回复「感谢你的移植工作，我授权给你了」。
->
-> 因此本插件按 MIT 要求随附 [`LICENSE`](LICENSE)（上游版权声明 + 移植者版权声明）。上游的 `.ps1` 源码与桌面端实现**未被本插件包含**。
+仓库内的 `大肥鱼桌宠*`、`原版（Windows版）/`、`dsh-balance-pet-macos/` 和 `output/` 为继承的桌面端代码及素材记录，**不属于本插件的维护或安装入口**。保留原路径和历史，日常使用只需关注上表中的插件目录。
+
+## 版本与开发
+
+插件版本以 `dsh-plugin/package.json` 为准，本次按维护规则建立 **1.0.0** 基线，前身版本为 0.2.0。新增功能递增 MINOR，修复和小改进递增 PATCH，MAJOR 由维护者决定。
+
+上游文档的 **v11** 是来源标记，与本插件版本无关。`index-v11.js` 的文件名保留用于 Loader 缓存兼容。
+
+使用已有 Node.js 与 npm，无需安装额外依赖：
+
+```sh
+npm --prefix dsh-plugin run check
+npm --prefix dsh-plugin run release
+```
+
+离线检查覆盖语法、宿主入口、素材路由、页面脚本注入去重和卸载清理，不读取个人凭据、不访问真实余额接口。UI 变更仍需在 DSH 中检查拖拽、缩放、动画和外观切换。
+
+发布工具输出 `Release/v<版本>/dsh-plugin/` 与 SHA-256 清单，已有版本目录拒绝覆盖。版本更新同步 README 和 CHANGELOG。见[维护规则](https://github.com/YCTS-otree/VK-1/blob/main/AGENTS.md)和[贡献说明](https://github.com/YCTS-otree/VK-1/blob/main/CONTRIBUTING.md)。
+
+## 来源与许可
+
+感谢 **VKmich16** 提供原版桌宠、美术、音效与行为设计。插件移植自 `大肥鱼桌宠改_D-16BVM`；仓库中的桌面端历史内容不包含在插件发布包中。
+
+插件和随附素材按 [MIT 许可](LICENSE)分发，保留原作者与移植者的版权声明。授权说明见[上游 README](https://github.com/VKmich16/VK-1#readme)及[作者授权回复](https://github.com/VKmich16/VK-1/issues/3)。其他平台历史实现的许可以各自原说明为准。

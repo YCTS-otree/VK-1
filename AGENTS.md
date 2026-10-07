@@ -1,27 +1,24 @@
-# 项目维护约定
+# DSH 插件维护规则
 
-本仓库包含两个**独立维护**的实现，约定按平台分开，互不干扰。
+## 范围与安全
+- YCTS-otree 维护 dsh-plugin/ 中的 DSH 网页插件。继承的桌面端代码与素材记录为历史内容，不顺手修改原实现或许可。
+- 禁止读取、展示、复制、提交任何私钥内容；已知路径仅可在明确需要时交给可信程序。
+- 不提交凭据、API Key、令牌、个人设置或敏感日志。
 
-## 通用
+## Git、版本与发布
+- 修改前检查 Git 状态，保留他人工作，不重写公共历史。
+- 开发统一在 main；dsh-plugin 暂时兼容旧链接，不分别开发。
+- dsh-plugin/package.json 的 version 是唯一版本来源，规范化初始版本 1.0.0。
+- 新功能或显著性能改进递增 MINOR；修复或小改进递增 PATCH；MAJOR 由维护者决定。
+- 任务完成后在根 CHANGELOG.md 末尾追加一次条目，格式 ## vMAJOR.MINOR.PATCH - YYYY-MM-DD，只含有实际内容的 Added/Changed/Fixed/Removed/Notes 章节。
+- 包元数据、README、CHANGELOG、发布输出版本一致。
+- Release/v<版本>/ 独立保存分发文件，不覆盖旧版，不夹带缓存或开发中间产物。
 
-- 提交前确认没有把个人凭证、日志、设置文件带进版本控制（见根目录 `.gitignore`）。
-- 不要改动对方平台的目录内容，除非事先沟通。
-
-## 🪟 Windows 版（`大肥鱼桌宠改_D-16BVM/` 等）
-
-- 每次功能新增、行为变更或修复，同步更新**根目录 README.md 的「Windows 版 → 版本历史」**，
-  用用户能理解的语言说明变化。
-- 发布新版本时，同步更新该表格里的「当前版本」标记。
-- `.ps1` / `.vbs` / `.cmd` 必须保持**纯 ASCII**（界面中文用 C# 的 `\uXXXX` 转义）——
-  Windows PowerShell 5.1 读取没有 BOM 的脚本时按 ANSI 解码，直接写中文会乱码甚至解析失败。
-- `.md` 用 UTF-8 无 BOM + LF；`.txt`（给记事本看的）用 UTF-8 **带 BOM** + CRLF。
-- 改完跑一遍 `_pdf_build/verify_release.py` 式的隐私与格式自检，再打包。
-
-## 🍎 macOS 版（`dsh-balance-pet-macos/`）
-
-- 每次功能新增、行为变更或修复，都必须同步更新根目录 `README.md` 的「macOS 版 → 更新记录」，
-  以用户可理解的语言说明变化。
-- 发布新版本时，同步更新 README 当前版本和对应版本的更新记录；视觉变化应加入实际渲染截图或预览。
-- README 展示图片优先使用 `dsh-balance-pet-macos/docs/previews/` 中的轻量预览，
-  并链接原始 PNG；不得覆盖应用原始素材来压缩文档体积。
-- 详细技术文档写在 `dsh-balance-pet-macos/README.md`，根目录只放面向用户的概述。
+## 兼容与验证
+- 保持 dsh-plugin/ 安装路径，保留 MIT 声明与素材来源。
+- index-v11.js 是 Loader 历史缓存标识，与插件语义版本无关，变更时同步 exports、files、cordis.patch.yml。
+- 文档 UTF-8 无 BOM + LF，不改写历史平台文件编码。
+- 使用已有 Node.js/npm，提交前运行 npm --prefix dsh-plugin run check。
+- 发布运行 npm --prefix dsh-plugin run release，拒绝覆盖已存在版本。
+- UI 变更须在 DSH 中检查拖拽、缩放、动画、外观切换，不能只以构建成功代替。
+- 重大架构变更先获维护者同意，在独立分支验证并保留旧实现。

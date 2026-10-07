@@ -2,7 +2,9 @@ name: macOS build and offline verification
 
 on:
   push:
+    paths: ['dsh-balance-pet-macos/**', '.github/workflows/macos.yml']
   pull_request:
+    paths: ['dsh-balance-pet-macos/**', '.github/workflows/macos.yml']
 
 permissions:
   contents: read

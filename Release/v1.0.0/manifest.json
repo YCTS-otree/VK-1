@@ -1,0 +1,20 @@
+{
+  "name": "dsh-vk1-balance-widget",
+  "version": "1.0.0",
+  "sha256": {
+    "dsh-plugin/package.json": "cc0ac9a489176251b2c2622621dd6d800661336ca89e989b25fcaeeb5c46457c",
+    "dsh-plugin/LICENSE": "0774433de99dd3d1198c91ca5fdd212e341b1d9a01d6696e7701c60d9d59d597",
+    "dsh-plugin/README.md": "cc20add184243b0b924b047e46d66140d121b726d0e87b6f90919dbd111f383c",
+    "dsh-plugin/index-v11.js": "92e03e2c5481b95b9bdb2394b07490770c428bb634ff68741d9e8a2a657d024f",
+    "dsh-plugin/widget.js": "d7f883d72a4cb7d6ae5900b4b2e81da75771536b9472cae39eb4044ea6b8a657",
+    "dsh-plugin/cordis.patch.yml": "b8b1b689b100f5d4ad5675208da29019e334d4de8f054030b76b799ba68a445f",
+    "dsh-plugin/assets/expression_11.png": "974b567a142adaaa5682fa39ddb746f1bad67cd3e16ef2c5797d44ce8bb5b3f3",
+    "dsh-plugin/assets/expression_12.png": "6ac5cf2c8a774b271a0a9980dd75f8354f15da01b2591cd3fa3f308d6eee2e45",
+    "dsh-plugin/assets/expression_21.png": "ece78bef3c4ba2d23382522102c0214a7dafa35482d5f31204c638fd8dfccffc",
+    "dsh-plugin/assets/expression_22.png": "ce5ac43bc5c27dedeffb449f40a3db1bdd383613bd93ce8025f4ee815ff36b41",
+    "dsh-plugin/assets/feed.mp3": "c44abec2ab2ab3165e68add62e577d02f5011e139a00c7ee1e84370311835903",
+    "dsh-plugin/assets/hit.mp3": "43fa877b537d8cbfbd676d76109b9a960551bfeae06c62e2d1a7d64d3994cb29",
+    "dsh-plugin/assets/iron_bowl.png": "c659031066afd2d3c7c06165a70fdb9e053de590387198f40d8b172958c88c0d",
+    "dsh-plugin/assets/rice.png": "b81d4e923e535d3107a936fa56714cf22170492a76a08d8fa904cbc1533cb23b"
+  }
+}

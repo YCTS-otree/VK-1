@@ -1,0 +1,14 @@
+# 入口用「锚定在 patch 文件旁的相对路径」，而不是包名 `dsh-vk1-balance-widget`。
+#
+# 为什么带 -v11 后缀：宿主侧模块在 Loader 里按 URL 缓存，包名入口会一直命中旧
+# 模块，普通 bundle 停/启不会重导入（link: 安装的通病）。换一个从未被 import 过的
+# 文件名 = 拿到全新模块 URL，改宿主代码无需重启 DSH 即可生效。因此
+# **index-v11.js 是本插件唯一的宿主入口**（package.json 的 exports["."] 也指向它），
+# 仓库里没有与之并存的 index.js，不会出现两份副本漂移。
+# 下次改宿主代码：把文件递增为 index-v12.js，并同步本行与 package.json。
+#
+# 已试过但不可行的写法：`name: ./index.js?v=11` —— 查询串只对 profile 本地补丁
+# 有效，包内相对路径带查询串会解析失败并把插件打成 inactive。
+- insert:
+    - id: dsh-vk1-balance-widget
+      name: ./index-v11.js

@@ -14,3 +14,11 @@ status.json
 *.pem
 *.key
 *.lock
+
+# DSH plugin development and private credentials
+node_modules/
+*.p12
+*.pfx
+*.jks
+id_rsa
+id_ed25519
