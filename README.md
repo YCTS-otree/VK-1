@@ -1,6 +1,6 @@
 # VK-1 · DSH 余额挂件
 
-把大肥鱼桌宠搬进 DSH：她举着平板显示 DeepSeek 余额，花钱时挨打，充值时掉米饭盆。
+把大肥鱼桌宠搬进 DSH：她举着平板显示 DeepSeek 余额，花钱时MC受击，充值时掉米饭盆。
 
 **插件版本：1.0.2** · 维护者：[YCTS-otree](https://github.com/YCTS-otree) · [报告 BUG / 提建议](https://github.com/YCTS-otree/VK-1/issues) · [更新记录](https://github.com/YCTS-otree/VK-1/blob/main/CHANGELOG.md)
 
