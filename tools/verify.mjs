@@ -28,6 +28,7 @@ plugin.apply({
       const html = transform('<body></body>')
       assert.ok(html.includes('/dsh-vk1/widget.js'))
       assert.equal(transform(html), html, 'script injection must be idempotent')
+      assert.ok(transform('<body>Example path: /dsh-vk1/widget.js</body>').includes('<script defer'), 'a path in page text must not suppress script injection')
       return () => { disposed++ }
     },
   },
@@ -46,6 +47,30 @@ for (const [url, route] of routes) {
 }
 cleanup()
 assert.equal(disposed, routes.size + 1)
+// Exercise the balance route only against a local stub; never resolve real credentials.
+{
+  const originalFetch = globalThis.fetch, originalNow = Date.now
+  let requests = 0, elapsed = 0, disposeMock, balanceHandler
+  const initialNow = originalNow()
+  try {
+    Date.now = () => initialNow + elapsed
+    globalThis.fetch = async () => {
+      requests++
+      return { ok: true, headers: new Headers({ date: new Date(initialNow).toUTCString() }), json: async () => ({ balance_infos: [{ currency: 'CNY', total_balance: '42.00' }] }) }
+    }
+    plugin.apply({
+      webServer: { register(route) { if (route.path.endsWith('/balance.json')) balanceHandler = route.handler; return () => {} }, tapIndex() { return () => {} } },
+      credentials: { resolve: async () => ({ value: 'offline-test-placeholder' }) }, effect(fn) { disposeMock = fn() },
+    })
+    const read = async () => { let payload; await balanceHandler({}, { writeHead() {}, end(body) { payload = JSON.parse(body) } }); return payload }
+    const first = await read()
+    elapsed = 3000
+    const cached = await read()
+    assert.equal(first.totalBalance, 42)
+    assert.equal(requests, 1, 'cached balance does not send another request')
+    assert.ok(Math.abs(Date.parse(cached.serverTime) - Date.parse(first.serverTime) - 3000) < 100, 'server time advances across cached responses')
+  } finally { globalThis.fetch = originalFetch; Date.now = originalNow; disposeMock?.() }
+}
 for (const file of ['README.md', 'dsh-plugin/README.md', 'CHANGELOG.md']) {
   assert.ok(fs.readFileSync(path.join(root, file), 'utf8').includes(pkg.version), `${file}: version mismatch`)
 }
@@ -62,3 +87,4 @@ if (fs.existsSync(release)) {
   }
 }
 console.log(`Verified plugin ${pkg.version}: syntax, entry, assets, routes, injection, cleanup and current release checksums.`)
+await import('./behavior.mjs')

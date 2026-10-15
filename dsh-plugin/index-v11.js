@@ -34,6 +34,10 @@ const ASSET_ROUTES = {
   '/dsh-vk1/iron_bowl.png': ['iron_bowl.png', 'image/png'],
   '/dsh-vk1/hit.mp3': ['hit.mp3', 'audio/mpeg'],
   '/dsh-vk1/feed.mp3': ['feed.mp3', 'audio/mpeg'],
+  '/dsh-vk1/pot_land.mp3': ['pot_land.mp3', 'audio/mpeg'],
+  '/dsh-vk1/pot_off.mp3': ['pot_off.mp3', 'audio/mpeg'],
+  ...Object.fromEntries(Array.from({ length: 5 }, (_, i) =>
+    [`/dsh-vk1/pat_hand_${i}.png`, [`pat_hand_${i}.png`, 'image/png']])),
 }
 
 const name = 'dsh-vk1-balance-widget'
@@ -108,6 +112,7 @@ function apply(ctx) {
         totalBalance: Number(info.total_balance),
         currency: String(info.currency || 'CNY'),
         updatedAt: new Date().toISOString(),
+        serverTime: res.headers.get('date') || null,
       }
     }
     const transient = !(lastErr && /^HTTP 4\d\d/.test(lastErr.message))
@@ -164,8 +169,15 @@ function apply(ctx) {
     handler: async (req, res) => {
       try {
         const payload = await getBalance()
+        // Cached balances retain their observation timestamp. Advance the server clock
+        // for each response so a browser polling inside the TTL does not freeze its clock.
+        const stamp = Date.parse(payload.serverTime)
+        const age = Math.max(0, Date.now() - Date.parse(payload.updatedAt))
+        const response = payload.ok && Number.isFinite(stamp) && Number.isFinite(age)
+          ? { ...payload, serverTime: new Date(stamp + age).toISOString() }
+          : payload
         res.writeHead(200, JSON_HEADERS)
-        res.end(JSON.stringify(payload))
+        res.end(JSON.stringify(response))
       } catch (err) {
         res.writeHead(200, JSON_HEADERS)
         res.end(JSON.stringify({ ok: false, code: 'ERROR', error: String((err && err.message) || err).slice(0, 200) }))
@@ -192,7 +204,7 @@ function apply(ctx) {
   }))
 
   disposers.push(ctx.webServer.tapIndex((html) => {
-    if (html.indexOf('/dsh-vk1/widget.js') !== -1) return html
+    if (/<script\b[^>]*\bsrc\s*=\s*["'][^"']*\/dsh-vk1\/widget\.js(?:\?[^"']*)?["']/i.test(html)) return html
     const tag = '<script defer src="/dsh-vk1/widget.js"></script>'
     if (html.indexOf('</body>') !== -1) return html.replace('</body>', tag + '</body>')
     return html + tag

@@ -6,6 +6,7 @@
 - 不提交凭据、API Key、令牌、个人设置或敏感日志。
 
 ## Git、版本与发布
+- 本 checkout 是插件的正式维护目录；origin 仅指向 YCTS-otree/VK-1。VKmich16/VK-1 只用于读取上游更新，禁止向其推送代码或创建维护 PR；upstream 的 push URL 必须保持禁用。
 - 修改前检查 Git 状态，保留他人工作，不重写公共历史。
 - 开发统一在 main；dsh-plugin 暂时兼容旧链接，不分别开发。
 - dsh-plugin/package.json 的 version 是唯一版本来源，规范化初始版本 1.0.0。

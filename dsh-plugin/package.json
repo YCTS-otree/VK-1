@@ -1,8 +1,8 @@
 {
   "name": "dsh-vk1-balance-widget",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "private": true,
-  "description": "VK-1 余额挂件（网页版）：上游 D-16BVM/v11 的纯插件移植——角色举黑屏平板显示 DeepSeek 余额，逐分扣费红闪/震动/飘字/音效，四种表情，充值掉米饭盆（拖到身上才入账），铁盆可扣头，火控雷达目标名牌",
+  "description": "VK-1 官方授权维护的 DSH 网页插件：余额平板、扣费与喂饭动画、抚摸、铁盆堆叠、四类音效与本地剪辑库、今日消费和峰谷时钟",
   "type": "module",
   "exports": {
     ".": "./index-v11.js",
@@ -22,6 +22,7 @@
   "license": "MIT",
   "scripts": {
     "check": "node ../tools/verify.mjs",
+    "preview": "node ../tools/preview.mjs",
     "release": "node ../tools/release.mjs"
   },
   "repository": {

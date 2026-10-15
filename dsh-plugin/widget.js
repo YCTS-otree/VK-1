@@ -1,7 +1,8 @@
 /* ===========================================================================
  * VK-1 余额挂件 —— 网页内挂件（纯插件形态）
  *
- * 上游：VKmich16/VK-1 的「大肥鱼桌宠改_D-16BVM」（说明文档自称 v11）。
+ * 上游：VKmich16/VK-1「大肥鱼桌宠现代化改_D-16BVM（2026）」571da3b。
+ * 现代化移植新增：抚摸、铁盆堆叠、四页设置、分项音效、本地剪辑库、今日消费与峰谷时钟。
  * 本文件是它 dsh_pet.ps1 的网页移植：保留原本全部可观察行为，去掉「桌宠」
  * 相关的一切（置顶窗口 / 托盘 / 屏幕角吸附 / 点击穿透 / 独立进程）。
  *
@@ -71,13 +72,14 @@
       document.body.appendChild(d)
     } catch (e2) {}
   }
-  window.addEventListener('error', function (ev) {
+  function onWidgetError(ev) {
     var src = String((ev && ev.filename) || '')
     var msg = String((ev && ev.message) || 'unknown')
     if (!isOurs(src)) return                      // not ours, or unattributable
     if (/ResizeObserver loop/i.test(msg)) return  // benign browser warning
     showFatal(msg + '   @' + (ev && ev.lineno) + ':' + (ev && ev.colno))
-  })
+  }
+  window.addEventListener('error', onWidgetError)
 
   var BASE = '/dsh-vk1'
   var EXPR_URL = {
@@ -120,9 +122,6 @@
   var DEFAULT_SIZE = 454
   var MIN_SIZE = 96
   var MAX_SIZE = 1200
-  var DEMOS = [0.05, 0.1, 0.2, 0.5, 1.0]
-  var DEMO_TOPUP = 3.0
-  var VOLUMES = [0, 25, 50, 75, 100]
 
   var BOWL_WAIT = 10.0
   var LOCK_DELAY = 1.0
@@ -149,6 +148,8 @@
   var SIZE_KEY = 'dsh-vk1-size'
   var GAP_KEY = 'dsh-vk1-gap'
   var SOUND_KEY = 'dsh-vk1-sound'
+  var OPTIONS_KEY = 'dsh-vk1-options'
+  var USAGE_KEY = 'dsh-vk1-usage'
 
   function round4(v) { return Math.round(v * 10000) / 10000 }
   function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v) }
@@ -332,11 +333,18 @@
     dragWidget: null,
     grab: null,
     menuOpen: false,
+    fxBowl: true, fxPat: true, fxHurt: true,
+    theme: 'auto',
+    cueVolumes: [100, 100, 100, 100],
+    usage: null,
+    peakMode: false, peakHold: 5,
+    cloudOffset: 0,
+    lastTabletClick: null,
   }
 
   function scaleOf() { return state.size / 1024 }
   function mirrored() { return state.h === 'right' }
-  function headXLocal() { return state.size * 0.67 }
+  function headXLocal() { return state.size * (mirrored() ? 0.33 : 0.67) }
   function headYLocal() { return state.size * 0.36 }
   function headScreen() { return { x: state.left + headXLocal(), y: state.top + headYLocal() } }
   function floaterStep() { return Math.max(18, 34 * scaleOf() * 1.7) }
@@ -396,16 +404,24 @@
         pool.push(a)
       } catch (err) {}
     }
-    return { pool: pool, idx: 0 }
+    return { pool: pool, idx: 0, cue: 0 }
   }
   var hitPool = makePool(HIT_SOUND, 4)
   var feedPool = makePool(FEED_SOUND, 2)
+  feedPool.cue = 1
+  var landPool = makePool(BASE + '/pot_land.mp3', 2)
+  landPool.cue = 2
+  var offPool = makePool(BASE + '/pot_off.mp3', 2)
+  offPool.cue = 3
+  var cuePools = [hitPool, feedPool, landPool, offPool]
   function playPool(p) {
-    if (!state.soundOn || state.volume <= 0 || !p.pool.length) return
+    if (!state.soundOn || state.volume <= 0 || !p.pool.length || stopped) return
     try {
       var a = p.pool[p.idx++ % p.pool.length]
-      a.volume = state.volume / 100
-      a.currentTime = 0
+      a.volume = state.volume / 100 * state.cueVolumes[p.cue] / 100
+      a.currentTime = p.clip ? p.clip.start : 0
+      clearTimeout(a.trimTimer)
+      if (p.clip) a.trimTimer = setTimeout(function () { a.pause() }, (p.clip.end - p.clip.start) * 1000)
       var r = a.play()
       if (r && typeof r.catch === 'function') r.catch(function () {})
     } catch (err) {}
@@ -429,9 +445,10 @@
   }
 
   function makeTick(amount, fromTest) {
-    if (state.hits.length < 3) state.hits.push({ T: 0 })
     if (fromTest) state.testOffset = round4(state.testOffset + amount)
     else state.testOffset = 0
+    if (!state.fxHurt) return
+    if (state.hits.length < 3) state.hits.push({ T: 0 })
 
     var trail = 0
     for (var i = 0; i < state.floaters.length; i++) if (state.floaters[i].T < 0.5) trail++
@@ -533,13 +550,26 @@
     return base
   }
 
-  function startCredit(amount) {
+  function startCredit(amount, demo) {
+    if (!isFinite(amount) || amount <= 0) return
+    if (demo) {
+      // Rehearsals have their own bowls; real polling and today's usage never see fake money.
+      if (!state.fxBowl) { state.testOffset = round4(state.testOffset - amount); updateScreen(); return }
+    } else {
     state.creditPending = round4(state.creditPending + amount)
+      if (!state.fxBowl) {
+        applyCredit(amount)
+        state.creditPending = Math.max(0, round4(state.creditPending - amount))
+        updateScreen()
+        return
+      }
+    }
     var vs = viewportRect()
     var d = riceDims()
     var R = d.w * 0.42
     newBowl({
       amount: amount,
+      demo: !!demo,
       artW: d.w, artH: d.h, url: RICE_URL, R: R,
       X: vs.right - R * 1.2 - state.bowls.length * R * 0.5,
       Y: vs.top - R * 1.2,
@@ -550,7 +580,6 @@
   }
 
   function dropIronPot(x, y) {
-    for (var i = 0; i < state.bowls.length; i++) if (state.bowls[i].iron && state.bowls[i].fadeT <= 0) return
     var d = ironLooseSize()
     var floor = viewportRect().bottom
     newBowl({
@@ -569,9 +598,11 @@
   }
 
   function onRiceFed(bowl) {
+    if (bowl.fed) return
     bowl.fed = true
     bowl.dieT = 0
     bowl.dragging = false
+    if (state.grab && state.grab.bowl === bowl) { state.grab = null; removeDragListeners() }
     var h = headScreen()
     spawnHearts(h.x, state.top + state.size * 0.20)
     playPool(feedPool)
@@ -579,11 +610,14 @@
     var haveFigures = isFinite(state.real) && isFinite(state.bookedBal)
     var shortfall = haveFigures ? Math.max(0, Math.round((state.real - state.bookedBal) * 100) / 100) : 0
     var owed = Math.max(state.creditPending, shortfall)
-    var gain = Math.min(bowl.amount, owed)
+    var gain = bowl.demo ? bowl.amount : Math.min(bowl.amount, owed)
     if (gain <= 1e-9) gain = owed
     if (gain > 1e-9) {
-      applyCredit(gain)
-      state.creditPending = Math.max(0, round4(state.creditPending - gain))
+      if (bowl.demo) state.testOffset = round4(state.testOffset - gain)
+      else {
+        applyCredit(gain)
+        state.creditPending = Math.max(0, round4(state.creditPending - gain))
+      }
       spawnFloater('+' + fmt2(gain), h.x - state.size * 0.06, h.y - Math.round(2 * floaterStep()), true)
     }
     dropIronPot(bowl.X, bowl.Y)
@@ -631,27 +665,41 @@
   }
 
   function ironAnchorX() { return state.left + state.size * (mirrored() ? (1 - 0.5558) : 0.5558) }
-  function ironHeadAnchor() {
+  var wornSequence = 0
+  function ironStackIndex(p) {
+    var index = 0
+    for (var i = 0; i < state.bowls.length; i++) {
+      var r = state.bowls[i]
+      if (r !== p && r.iron && r.onHead && r.wornOrder < p.wornOrder) index++
+    }
+    return index
+  }
+  function ironHeadAnchor(p) {
     var worn = ironWornSize()
     var rimY = state.top + state.size * 0.3639
-    return { x: Math.round(ironAnchorX()), y: Math.round(rimY - worn.h / 2), w: worn.w, h: worn.h }
+    return { x: Math.round(ironAnchorX()), y: Math.round(rimY - worn.h / 2 - (p ? ironStackIndex(p) : 0) * worn.h * 2 / 3), w: worn.w, h: worn.h }
   }
   function ironOnHead(p) {
-    if (!p.iron || p.onHead || p.headFalling || p.fed) return false
-    if (p.VY < -60) return false
+    if (!p.iron || p.onHead || p.headFalling || p.fed || p.dragging) return false
+    if (p.VY < 30) return false
     var rimX = p.X
     var rimY = p.Y + p.artH / 2
     var cx = ironAnchorX()
     var cy = state.top + state.size * 0.3639
+    var top = null
+    state.bowls.forEach(function (b) { if (b.onHead && (!top || b.Y < top.Y)) top = b })
+    if (top) return Math.abs(p.X - top.X) <= p.artW / 2 && rimY >= top.Y - top.artH / 2 - 14 && rimY <= top.Y + top.artH / 2
     var halfW = state.size * 0.26
     var halfH = state.size * 0.18
     return rimX > cx - halfW && rimX < cx + halfW && rimY > cy - halfH && rimY < cy + halfH
   }
   function attachIronPot(p) {
-    var a = ironHeadAnchor()
+    p.wornOrder = ++wornSequence
+    var a = ironHeadAnchor(p)
     p.onHead = true
-    p.headFalling = true
-    p.headY = p.Y
+    p.headFalling = false
+    p.Y = a.y
+    p.headY = a.y
     p.headTarget = a.y
     p.X = a.x
     p.VX = 0
@@ -666,6 +714,19 @@
     p.el.style.width = worn.w + 'px'
     p.el.style.height = worn.h + 'px'
     state.headSquashT = 0
+    playPool(landPool)
+  }
+
+  function knockPotOff() {
+    var top = null
+    state.bowls.forEach(function (p) {
+      if (p.onHead && p.fadeT <= 0 && (!top || p.Y < top.Y)) top = p
+    })
+    if (!top) return false
+    top.fadeT = 0.001
+    state.headSquashT = 0
+    playPool(offPool)
+    return true
   }
 
   function updateBowls(dt) {
@@ -683,7 +744,8 @@
       if (r.squishT < r.squishDur) r.squishT += dt
 
       if (r.onHead) {
-        var a = ironHeadAnchor()
+        var a = ironHeadAnchor(r)
+        r.headTarget = a.y
         if (r.fadeT > 0) {
           r.fadeT += dt
           if (r.fadeT > IRON_FADE) {
@@ -748,6 +810,7 @@
         if (ironOnHead(r)) attachIronPot(r)
       }
 
+      if (!r.iron && !r.fed && riceOnGirl(r)) onRiceFed(r)
       if (r.squishT < r.squishDur) {
         var u = r.squishT / r.squishDur
         r.squish = Math.cos(u * 2.2 * Math.PI) * (1 - u) * 0.52
@@ -946,7 +1009,8 @@
     // even while a deduction plays (their own test is named "stillCalmWhileCharging").
     // Here the charge expression wins, so the planchette still reads as reacting to the
     // money going out. Calm keeps its place ahead of aloof.
-    if (cueRunning) { want = 'nervous'; state.nervousT = NERVOUS_HOLD }
+    if (pat.active) want = 'happy'
+    else if (cueRunning && state.fxHurt) { want = 'nervous'; state.nervousT = NERVOUS_HOLD }
     else if (state.nervousT > 0) want = 'nervous'
     else if (headPotOn && !anyBowl) want = 'calm'
     else if (state.bowlWait >= BOWL_WAIT) want = 'aloof'
@@ -956,6 +1020,8 @@
 
   // ------------------------------------------------------- balance reading ---
   function applyBalance(bal, snap) {
+    if (!isFinite(bal)) return
+    noteUsage(bal)
     state.connected = true
     var first = !isFinite(state.real)
     var prev = state.real
@@ -973,6 +1039,8 @@
       state.pendingStep = 0
       state.dueGap = 0
       state.creditPending = 0
+      state.bowls.filter(function (b) { return !b.iron }).forEach(function (b) { detach(b.el) })
+      state.bowls = state.bowls.filter(function (b) { return b.iron })
     } else if (!first) {
       if (bal > prev + 1e-9) {
         // A top-up must NOT move the readout: it drops a bowl for you to collect.
@@ -998,6 +1066,8 @@
   function updateScreen() {
     var v = drawnBalance()
     numEl.textContent = isFinite(v) ? v.toFixed(2) : '--'
+    numEl.style.fontSize = 'calc(var(--dshvk1-ph) * ' + Math.min(0.48, 2.5 / Math.max(1, numEl.textContent.length)) + ')'
+    updateTablet()
     dot.style.display = state.connected ? 'none' : 'block'
   }
 
@@ -1008,10 +1078,14 @@
     fetch(BALANCE_URL, { cache: 'no-store' })
       .then(function (r) { return r.json() })
       .then(function (d) {
-        if (d && d.ok && isFinite(Number(d.totalBalance))) applyBalance(Number(d.totalBalance), !!snap)
+        if (stopped) return
+        if (d && d.ok && d.totalBalance != null && isFinite(Number(d.totalBalance))) {
+          if (d.serverTime && isFinite(Date.parse(d.serverTime))) state.cloudOffset = Date.parse(d.serverTime) - Date.now()
+          applyBalance(Number(d.totalBalance), !!snap)
+        }
         else { state.connected = false; updateScreen() }
       })
-      .catch(function () { state.connected = false; updateScreen() })
+      .catch(function () { if (!stopped) { state.connected = false; updateScreen() } })
       .finally(function () { busy = false })
   }
 
@@ -1050,6 +1124,7 @@
           ' translate(' + (-r.artW / 2).toFixed(1) + 'px,' + (-r.artH).toFixed(1) + 'px)'
       }
       r.el.style.transform = tf
+      r.el.style.zIndex = r.onHead ? String(10 + ironStackIndex(r)) : '0'
       if (r.fed) {
         var e = 1.0 - r.dieT / BOWL_DIE
         r.el.style.opacity = String(e > 0 ? e : 0)
@@ -1098,6 +1173,8 @@
 
     updateBowls(dt)
     updateRadar(dt)
+    updatePat(dt)
+    tickTablet(dt)
     updateExpression(dt)
 
     for (var i = state.hits.length - 1; i >= 0; i--) {
@@ -1138,6 +1215,13 @@
     var shakeTf = 'translate(' + Math.round(sx) + 'px,' + Math.round(sy) + 'px)'
     if (squash > 0.001) {
       shakeTf += ' scale(' + (1 + squash * 0.10).toFixed(4) + ',' + (1 - squash * 0.16).toFixed(4) + ')'
+    }
+    if (pat.active) {
+      var pi = Math.floor(pat.t / 0.04) % 5
+      // Upstream moves the compression pivot below her feet: displacement is shift*(1-scaleY).
+      // Keep the feet inside the webpage when she is pinned against the viewport's bottom.
+      var patShift = Math.min(state.size * pi * 0.05 * pi * 0.0625, Math.max(0, viewport().h - state.top - state.size))
+      shakeTf += ' translateY(' + patShift.toFixed(2) + 'px) scale(' + (1 + pi * 0.025) + ',' + (1 - pi * 0.0625) + ')'
     }
     body.style.transform = shakeTf
 
@@ -1427,6 +1511,8 @@
     document.removeEventListener('pointercancel', onUp, true)
   }
   function onDown(e) {
+    blockPat()
+    if (settings.open) return
     if (state.menuOpen) return
     if (e.button !== 0 && e.pointerType === 'mouse') return
     if (e.target && e.target.closest && e.target.closest('.dshvk1-menu')) return
@@ -1439,14 +1525,23 @@
     if (isHead && state.lastHeadClick && now - state.lastHeadClick.t < 400 &&
         Math.abs(e.clientX - state.lastHeadClick.x) < 24 && Math.abs(e.clientY - state.lastHeadClick.y) < 24) {
       state.lastHeadClick = null
-      for (var i = 0; i < state.bowls.length; i++) {
-        var ib = state.bowls[i]
-        if (ib.iron && ib.onHead && ib.fadeT <= 0) { ib.fadeT = 0.001; state.headSquashT = 0 }
-      }
+      knockPotOff()
       try { e.preventDefault(); e.stopPropagation() } catch (err) {}
       return
     }
     if (isHead) state.lastHeadClick = { t: now, x: e.clientX, y: e.clientY }
+    if (onTablet(e.clientX, e.clientY)) {
+      var tc = state.lastTabletClick
+      if (tc && now - tc.t < 400 && Math.hypot(e.clientX - tc.x, e.clientY - tc.y) < 24) {
+        state.peakMode = !state.peakMode
+        state.peakHold = 5
+        state.lastTabletClick = null
+        updateTablet()
+        e.preventDefault(); e.stopPropagation()
+        return
+      }
+      state.lastTabletClick = { t: now, x: e.clientX, y: e.clientY }
+    }
 
     var bowl = bowlAt(e.clientX, e.clientY)
     if (bowl) {
@@ -1498,16 +1593,12 @@
       state.grab = null
       removeDragListeners()
       if (b.iron) {
-        if (ironOnHead(b)) {
-          attachIronPot(b)
-        } else {
           b.VX = b.sampleVX * 0.35
           b.VY = b.sampleVY * 0.35
           var floor = viewportRect().bottom
           b.maxBounces = bouncesForDrop(Math.max(0, floor - b.Y))
           b.bounces = 0
           b.grounded = false
-        }
       } else if (riceOnGirl(b)) {
         onRiceFed(b)
       } else {
@@ -1542,6 +1633,7 @@
     saveAnchor()
   }
   function onCursor(e) {
+    pat.pointer = { x: e.clientX, y: e.clientY, buttons: e.buttons || 0 }
     if (state.dragWidget || state.grab) return
     var onArt = isHit(e)
     var onBowl = !!bowlAt(e.clientX, e.clientY)
@@ -1557,6 +1649,7 @@
     else root.style.cursor = onArt ? 'grab' : ''
   }
   function onContextMenu(e) {
+    if (settings.open) return
     if (state.dragWidget || state.grab) return
     if (!isHit(e)) return
     try { e.preventDefault(); e.stopPropagation() } catch (err) {}
@@ -1593,92 +1686,13 @@
     b.addEventListener('click', function (e) { e.stopPropagation(); closeMenu(); onClick() })
     menu.appendChild(b)
   }
-  function menuCap(text) {
-    var d = document.createElement('div')
-    d.className = 'dshvk1-menu-cap'
-    d.textContent = text
-    menu.appendChild(d)
-  }
-  function menuChips(items, current, onPick) {
-    var wrap = document.createElement('div')
-    wrap.className = 'dshvk1-menu-grid'
-    items.forEach(function (it) {
-      var c = document.createElement('button')
-      c.type = 'button'
-      c.className = 'dshvk1-menu-chip' + (current === it.value ? ' dshvk1-chip-on' : '')
-      c.textContent = it.label
-      c.addEventListener('click', function (e) { e.stopPropagation(); closeMenu(); onPick(it.value) })
-      wrap.appendChild(c)
-    })
-    menu.appendChild(wrap)
-  }
-  function menuToggleRow(text, on, onToggle) {
-    var row = document.createElement('div')
-    row.className = 'dshvk1-menu-row dshvk1-menu-row-flex'
-    var lab = document.createElement('span')
-    lab.textContent = text
-    var chip = document.createElement('button')
-    chip.type = 'button'
-    chip.className = 'dshvk1-menu-chip' + (on ? ' dshvk1-chip-on' : '')
-    chip.textContent = on ? '开' : '关'
-    chip.addEventListener('click', function (e) { e.stopPropagation(); onToggle(!on) })
-    row.appendChild(lab)
-    row.appendChild(chip)
-    menu.appendChild(row)
-  }
-  function menuNumberRow(text, value, unit, disabled, onChange) {
-    var row = document.createElement('div')
-    row.className = 'dshvk1-menu-row dshvk1-menu-row-flex'
-    var lab = document.createElement('span')
-    lab.textContent = text
-    var inp = document.createElement('input')
-    inp.type = 'number'
-    inp.min = '0'
-    inp.step = '1'
-    inp.className = 'dshvk1-menu-num'
-    inp.value = String(value)
-    inp.disabled = !!disabled
-    inp.addEventListener('input', function () { onChange(inp.value) })
-    var u = document.createElement('span')
-    u.className = 'dshvk1-menu-unit'
-    u.textContent = unit
-    row.appendChild(lab); row.appendChild(inp); row.appendChild(u)
-    menu.appendChild(row)
-  }
-  function sep() {
-    var d = document.createElement('div')
-    d.className = 'dshvk1-menu-sep'
-    menu.appendChild(d)
-  }
   function buildMenu() {
     menu.textContent = ''
     menuRow('立即刷新余额', function () { poll(true) })
-    menuRow('测试一次扣费效果', function () { makeTick(STEP, true); updateScreen() })
-    sep()
-    menuCap('测试充值动画')
-    menuRow('模拟充值 ' + fmt2(DEMO_TOPUP) + ' 元（掉米饭盆）', function () { startCredit(DEMO_TOPUP) })
-    menuRow('打开火控雷达', function () { state.radarManual = true })
-    sep()
-    menuCap('演示连续扣费')
-    menuChips(DEMOS.map(function (d) { return { label: '-' + amountText(d), value: d } }), null, function (v) {
-      state.demoAmount = v
-      state.demoLeft = Math.round(v / STEP)
-    })
-    sep()
-    menuCap('尺寸')
-    menuChips(SIZES.map(function (s) { return { label: s + 'px', value: s } }), state.size, function (v) { setSize(v) })
-    menuNumberRow('自定义', state.size, 'px', false, function (v) { setSize(v) })
-    sep()
-    menuCap('声音')
-    menuToggleRow('开启声音', state.soundOn, function (on) { state.soundOn = !!on; saveSound(); buildMenu() })
-    menuChips(VOLUMES.map(function (v) { return { label: v + '%', value: v } }), state.volume, function (v) {
-      state.volume = v
-      saveSound()
-    })
-    sep()
-    menuCap('位置')
-    menuToggleRow('避让滚动条', state.scrollGapOn, function (on) { setScrollGapOn(on); buildMenu() })
-    menuNumberRow('宽度', state.scrollGapPx, 'px', !state.scrollGapOn, function (v) { setScrollGapPx(v) })
+    menuRow('演示', function () { showSettings('demo') })
+    menuRow('设置', function () { showSettings('display') })
+    menuRow('显示峰谷时钟', function () { state.peakMode = !state.peakMode; state.peakHold = 5; updateTablet() })
+
   }
   function openMenu(clientX, clientY) {
     buildMenu()
@@ -1706,7 +1720,7 @@
   btn.addEventListener('pointerleave', function () { if (!state.menuOpen) { btnOnSolid = false; releaseBtn() } })
   function onDocMenuClose(e) {
     if (!state.menuOpen) return
-    if (e.target && e.target.closest && (e.target.closest('.dshvk1-menu') || e.target.closest('.dshvk1-btn'))) return
+    if (e.target && e.target.closest && (e.target.closest('.dshvk1-menu') || e.target.closest('.dshvk1-btn') || e.target.closest('.dshvk1-dialog'))) return
     closeMenu()
   }
   document.addEventListener('pointerdown', onDocMenuClose, true)
@@ -1740,6 +1754,469 @@
     try { localStorage.setItem(SOUND_KEY, JSON.stringify({ on: state.soundOn, vol: state.volume })) } catch (err) {}
   }
 
+  // Modernized upstream 571da3b (2026-10-15): hover strokes, usage and tablet clock.
+  var pat = { active: false, t: 0, distance: 0, moveTime: 0, idle: 0, blocked: 0, pointer: null, previous: null, waiting: false }
+  var hands = []
+  for (var hi = 0; hi < 5; hi++) {
+    var hand = document.createElement('img')
+    hand.src = BASE + '/pat_hand_' + hi + '.png'
+    hand.alt = ''
+    hand.draggable = false
+    hand.style.cssText = 'position:absolute;pointer-events:none;display:none;transform-origin:0 0'
+    root.appendChild(hand)
+    hands.push(hand)
+  }
+  function blockPat() {
+    pat.active = false; pat.waiting = false; pat.t = 0
+    pat.distance = 0; pat.moveTime = 0; pat.blocked = 1.16
+    hands.forEach(function (h) { h.style.display = 'none' })
+  }
+  function pointerLeft() { pat.pointer = null }
+  document.addEventListener('pointerleave', pointerLeft)
+  window.addEventListener('blur', pointerLeft)
+  function updatePat(dt) {
+    var p = pat.pointer
+    var onHer = p && charHitAt(p.x, p.y)
+    var can = onHer && !p.buttons && !state.menuOpen && !settings.open && !state.dragWidget && !state.grab && state.fxPat
+    var distance = p && pat.previous ? Math.hypot(p.x - pat.previous.x, p.y - pat.previous.y) : 0
+    if (distance > 120) distance = 0
+    pat.previous = p ? { x: p.x, y: p.y } : null
+    if (state.dragWidget || state.grab || (p && p.buttons)) pat.blocked = 1.16
+    else pat.blocked = Math.max(0, pat.blocked - dt)
+    if (!can || pat.blocked > 0) {
+      pat.distance = 0; pat.moveTime = 0
+      if (!state.fxPat || pat.blocked > 0 || state.menuOpen || settings.open) pat.active = false
+    }
+    if (pat.waiting) {
+      if (!can) pat.waiting = false
+      else if (!state.bowls.some(function (b) { return b.onHead })) { pat.waiting = false; pat.active = true; pat.t = 0 }
+      else if (!state.bowls.some(function (b) { return b.onHead && b.fadeT > 0 })) knockPotOff()
+    }
+    if (can && pat.blocked <= 0 && distance > 0) {
+      pat.idle = 0
+      pat.distance = Math.min(96, pat.distance + distance)
+      if (pat.distance >= 24) pat.moveTime += dt
+      if (!pat.active && !pat.waiting && pat.moveTime >= 0.5) {
+        if (state.bowls.some(function (b) { return b.onHead })) { knockPotOff(); pat.waiting = true }
+        else { pat.active = true; pat.t = 0 }
+      }
+    } else {
+      pat.idle += dt
+      if (!pat.active && pat.idle >= 0.15) { pat.distance = 0; pat.moveTime = 0 }
+      if (pat.idle >= 0.15) { pat.active = false; pat.distance = 0; pat.moveTime = 0 }
+    }
+    if (pat.active) pat.t += dt
+    var frameIndex = Math.floor(pat.t / 0.04) % 5
+    hands.forEach(function (h, i) {
+      h.style.display = pat.active && i === frameIndex ? 'block' : 'none'
+    })
+    if (!pat.active) return
+    // Same measured palm anchors as PatGeometry; reflect the whole rectangle on the right.
+    var k = state.size / 454
+    var w = 446 * k, h = 392 * k
+    var palmX = [0.319, 0.356, 0.318, 0.425, 0.298][frameIndex] + 0.393
+    var palmY = [0.511, 0.720, 0.835, 0.744, 0.608][frameIndex] - 0.206
+    var x = state.size * 0.67 - palmX * w
+    if (mirrored()) x = state.size - x - w
+    var y = 40 * (446 / 107) * k - palmY * h
+    hands[frameIndex].style.width = w + 'px'
+    hands[frameIndex].style.height = h + 'px'
+    hands[frameIndex].style.left = x + 'px'
+    hands[frameIndex].style.top = y + 'px'
+    hands[frameIndex].style.transform = mirrored() ? 'scaleX(-1) translateX(-100%)' : ''
+  }
+
+  var clockEl = document.createElement('div')
+  clockEl.style.cssText = 'position:absolute;inset:5% 0;display:none;flex-direction:column;justify-content:space-evenly;align-items:center;color:#ecf2fc;font-weight:bold;white-space:nowrap;font-size:calc(var(--dshvk1-ph) * .19)'
+  var clockLines = [document.createElement('div'), document.createElement('div'), document.createElement('div')]
+  clockLines.forEach(function (line) { clockEl.appendChild(line) })
+  panel.appendChild(clockEl)
+  function usageDay() {
+    var d = new Date()
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate()
+  }
+  function saveUsage() { try { localStorage.setItem(USAGE_KEY, JSON.stringify(state.usage)) } catch (e) {} }
+  function noteUsage(balance) {
+    var u = state.usage
+    if (!u || u.day !== usageDay() || !isFinite(u.base)) u = { day: usageDay(), base: balance, topup: 0, last: balance, used: 0 }
+    else {
+      if (balance > u.last) u.topup = round4(u.topup + balance - u.last)
+      u.used = Math.max(0, round4(u.base + u.topup - balance))
+      u.last = balance
+    }
+    state.usage = u
+    saveUsage()
+  }
+  function onTablet(x, y) {
+    var q = quad().P
+    var lx = x - state.left, ly = y - state.top
+    if (mirrored()) lx = state.size - lx
+    var ax = q[1].x - q[0].x, ay = q[1].y - q[0].y
+    var bx = q[3].x - q[0].x, by = q[3].y - q[0].y
+    var det = ax * by - ay * bx
+    var u = ((lx - q[0].x) * by - (ly - q[0].y) * bx) / det
+    var v = (ax * (ly - q[0].y) - ay * (lx - q[0].x)) / det
+    return u >= 0 && u <= 1 && v >= 0 && v <= 1
+  }
+  function updateTablet() {
+    if (!clockEl) return
+    labelEl.style.display = state.peakMode ? 'none' : ''
+    amountEl.style.display = state.peakMode ? 'none' : ''
+    clockEl.style.display = state.peakMode ? 'flex' : 'none'
+    if (!state.peakMode) return
+    var bj = new Date(Date.now() + state.cloudOffset + 8 * 3600000)
+    var seconds = bj.getUTCHours() * 3600 + bj.getUTCMinutes() * 60 + bj.getUTCSeconds()
+    var off = seconds >= 1800 && seconds < 30600
+    var target = off ? 30600 : (seconds < 1800 ? 1800 : 88200)
+    function pad(n) { return String(n).padStart(2, '0') }
+    var left = target - seconds
+    clockLines[0].textContent = pad(bj.getUTCHours()) + ':' + pad(bj.getUTCMinutes()) + ':' + pad(bj.getUTCSeconds())
+    clockLines[1].textContent = off ? '梁文谷' : '梁文峰'
+    clockLines[1].style.color = off ? '#96e2aa' : '#f0be78'
+    clockLines[2].textContent = (off ? '距峰时 ' : '距谷时 ') + Math.floor(left / 3600) + ':' + pad(Math.floor(left / 60) % 60) + ':' + pad(left % 60)
+    panel.title = '北京时间；沿用上游 00:30–08:30 谷时规则，不含节假日调整'
+  }
+  function tickTablet(dt) {
+    if (!state.peakMode) return
+    var p = pat.pointer
+    if (p && charHitAt(p.x, p.y)) state.peakHold = 5
+    else if (chargingBusy()) state.peakHold = 1
+    else state.peakHold -= dt
+    if (state.peakHold <= 0) state.peakMode = false
+    updateTablet()
+  }
+  function saveOptions() {
+    try { localStorage.setItem(OPTIONS_KEY, JSON.stringify({ fxBowl: state.fxBowl, fxPat: state.fxPat, fxHurt: state.fxHurt, theme: state.theme, cueVolumes: state.cueVolumes })) } catch (e) {}
+  }
+
+  // Four-page settings surface. All placement follows grid/flex layout, including narrow viewports.
+  styleEl.textContent += '\n' + [
+    '.dshvk1-dialog{--vk-bg:#fff;--vk-ink:#203052;--vk-muted:#65718b;--vk-border:#d9deea;--vk-card:#f2f5fa;--vk-accent:#3c5ddb;background:var(--vk-bg);color:var(--vk-ink);border:1px solid var(--vk-border);border-radius:16px;padding:0;width:min(650px,calc(100vw - 24px));max-height:calc(100dvh - 24px);box-sizing:border-box;box-shadow:0 18px 70px #0005;font:14px/1.5 system-ui,sans-serif}',
+    '.dshvk1-dialog::backdrop{background:#0005}',
+    '.dshvk1-dialog[data-theme=dark]{--vk-bg:#171e2d;--vk-ink:#edf2ff;--vk-muted:#a3b0ca;--vk-border:#3b4861;--vk-card:#232e43;--vk-accent:#9eb7ff;color-scheme:dark}',
+    '@media(prefers-color-scheme:dark){.dshvk1-dialog[data-theme=auto]{--vk-bg:#171e2d;--vk-ink:#edf2ff;--vk-muted:#a3b0ca;--vk-border:#3b4861;--vk-card:#232e43;--vk-accent:#9eb7ff;color-scheme:dark}}',
+    '.dshvk1-dialog header{position:sticky;top:0;z-index:2;background:var(--vk-bg);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;border-bottom:1px solid var(--vk-border)}',
+    '.dshvk1-dialog h2{margin:0;font-size:18px}.dshvk1-dialog h3{margin:12px 0 8px;font-size:14px}',
+    '.dshvk1-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:12px 20px;border-bottom:1px solid var(--vk-border)}',
+    '.dshvk1-dialog button,.dshvk1-dialog select,.dshvk1-dialog input{font:inherit;color:inherit;box-sizing:border-box}',
+    '.dshvk1-dialog button,.dshvk1-dialog select{background:var(--vk-card);border:1px solid var(--vk-border);border-radius:8px;padding:7px 11px;cursor:pointer}',
+    '.dshvk1-dialog button[aria-selected=true]{color:var(--vk-accent);border-color:var(--vk-accent);font-weight:700}',
+    '.dshvk1-dialog button:focus-visible,.dshvk1-dialog input:focus-visible,.dshvk1-dialog select:focus-visible{outline:2px solid var(--vk-accent);outline-offset:2px}',
+    '.dshvk1-dialog button:disabled{opacity:.5;cursor:default}.dshvk1-content{padding:4px 20px 20px;overflow-wrap:anywhere}',
+    '.dshvk1-setting{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--vk-border)}',
+    '.dshvk1-setting label{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.dshvk1-setting input[type=number]{width:90px;padding:5px;background:var(--vk-card);border:1px solid var(--vk-border);border-radius:6px}',
+    '.dshvk1-actions{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.dshvk1-hint{color:var(--vk-muted);font-size:12px}.dshvk1-status{min-height:1.5em;margin:8px 0;color:var(--vk-accent)}',
+    '.dshvk1-clip{border:1px solid var(--vk-border);border-radius:10px;padding:12px;margin:10px 0}.dshvk1-dialog input[type=text]{max-width:100%;width:100%;padding:6px;background:var(--vk-card);border:1px solid var(--vk-border);border-radius:6px}',
+    '.dshvk1-wave{display:block;width:100%;height:84px;background:var(--vk-card);border-radius:6px;margin:8px 0}',
+    '@media(max-width:420px){.dshvk1-dialog header,.dshvk1-tabs{padding:12px}.dshvk1-content{padding:4px 12px 12px}.dshvk1-setting{align-items:flex-start}.dshvk1-dialog input[type=range]{max-width:145px}}'
+  ].join('\n')
+  var settings = document.createElement('dialog')
+  settings.className = 'dshvk1-dialog'
+  settings.setAttribute('aria-labelledby', 'dshvk1-settings-title')
+  var settingsHeader = document.createElement('header')
+  var settingsTitle = document.createElement('h2')
+  settingsTitle.id = 'dshvk1-settings-title'
+  settingsTitle.textContent = 'VK-1 设置'
+  settingsHeader.appendChild(settingsTitle)
+  var closeSettings = document.createElement('button')
+  closeSettings.textContent = '关闭'
+  closeSettings.addEventListener('click', function () { settings.close(); stopPreview() })
+  settingsHeader.appendChild(closeSettings)
+  settings.appendChild(settingsHeader)
+  var tabs = document.createElement('nav')
+  tabs.className = 'dshvk1-tabs'
+  tabs.setAttribute('aria-label', '设置分类')
+  settings.appendChild(tabs)
+  var content = document.createElement('div')
+  content.className = 'dshvk1-content'
+  settings.appendChild(content)
+  document.body.appendChild(settings)
+  var settingsPage = 'display'
+  var libraryCue = 0
+  var renderGeneration = 0
+  function element(tag, text, parent, className) {
+    var el = document.createElement(tag)
+    if (text != null) el.textContent = text
+    if (className) el.className = className
+    if (parent) parent.appendChild(el)
+    return el
+  }
+  function action(parent, text, fn) {
+    var b = element('button', text, parent)
+    b.type = 'button'; b.addEventListener('click', fn)
+    return b
+  }
+  function hint(text, parent) { return element('p', text, parent || content, 'dshvk1-hint') }
+  function toggle(text, checked, fn) {
+    var row = element('div', null, content, 'dshvk1-setting')
+    var label = element('label', text, row)
+    var input = element('input', null, label)
+    input.type = 'checkbox'; input.checked = checked
+    input.addEventListener('change', function () { fn(input.checked) })
+  }
+  function numeric(parent, text, value, min, max, step, fn, type) {
+    var label = element('label', text, parent)
+    var input = element('input', null, label)
+    input.type = type || 'number'; input.min = min; input.max = max; input.step = step; input.value = value
+    var output = type === 'range' ? element('span', value + '%', label) : null
+    input.addEventListener('input', function () {
+      if (input.value === '' || !input.validity.valid) return
+      var v = Number(input.value)
+      if (!isFinite(v) || v < min || v > max) return
+      if (output) output.textContent = v + '%'
+      fn(v)
+    })
+    return input
+  }
+  function onEscape(e) {
+    if (e.key === 'Escape') { closeMenu(); if (settings.open) { settings.close(); stopPreview(); e.stopPropagation() } }
+  }
+  document.addEventListener('keydown', onEscape, true)
+  settings.addEventListener('cancel', stopPreview)
+  settings.addEventListener('close', stopPreview)
+  function showSettings(page) {
+    blockPat(); closeMenu()
+    settingsPage = page || 'display'
+    renderSettings()
+    if (!settings.open) settings.showModal()
+  }
+  function renderSettings() {
+    renderGeneration++
+    settings.dataset.theme = state.theme
+    tabs.textContent = ''; content.textContent = ''
+    ;[['display', '显示'], ['sound', '声音'], ['library', '音效库'], ['demo', '演示']].forEach(function (tab) {
+      var b = action(tabs, tab[1], function () { stopPreview(); settingsPage = tab[0]; renderSettings() })
+      b.setAttribute('aria-selected', String(settingsPage === tab[0]))
+    })
+    if (settingsPage === 'display') {
+      element('h3', '功能选择', content)
+      ;[['fxBowl', '充值后掉落饭盆，手动拖取'], ['fxPat', '鼠标抚摸了会开心'], ['fxHurt', '扣费时播放音效与动画']].forEach(function (item) {
+        toggle(item[1], state[item[0]], function (v) { state[item[0]] = v; saveOptions(); if (!v && item[0] === 'fxPat') blockPat() })
+      })
+      hint('关闭掉盆后，新充值直接入账；关闭扣费效果仍会结算余额。演示同样遵守开关。')
+      element('h3', '外观与尺寸', content)
+      var themes = element('div', null, content, 'dshvk1-actions')
+      ;[['auto', '跟随系统'], ['light', '浅色'], ['dark', '深色']].forEach(function (t) {
+        var b = action(themes, t[1], function () { state.theme = t[0]; saveOptions(); renderSettings() })
+        b.setAttribute('aria-selected', String(state.theme === t[0]))
+      })
+      var sizes = element('div', null, content, 'dshvk1-actions')
+      SIZES.forEach(function (s) { action(sizes, s + 'px', function () { setSize(s); renderSettings() }) })
+      numeric(element('div', null, content, 'dshvk1-setting'), '自定义尺寸（px）', state.size, MIN_SIZE, MAX_SIZE, 1, setSize)
+      toggle('避让滚动条', state.scrollGapOn, setScrollGapOn)
+      numeric(element('div', null, content, 'dshvk1-setting'), '避让宽度（px）', state.scrollGapPx, 0, 100, 1, setScrollGapPx)
+      element('h3', '今日消费', content)
+      var used = state.usage && state.usage.day === usageDay() ? state.usage.used : 0
+      hint('今日已用 ¥' + fmt2(used) + '。根据观察到的余额变化估算，充值和演示不计入消费；可用平台今日消费校准。')
+      numeric(element('div', null, content, 'dshvk1-setting'), '校准今日已用（元）', used, 0, 1000000, 0.0001, function (v) {
+        if (!isFinite(state.real)) return
+        state.usage = { day: usageDay(), base: round4(state.real + v), topup: 0, last: state.real, used: v }
+        saveUsage()
+      }).disabled = !isFinite(state.real)
+      action(content, '显示峰谷时钟', function () { state.peakMode = true; state.peakHold = 5; updateTablet(); settings.close() })
+      hint('也可双击平板切换。离开角色 5 秒恢复余额；沿用上游北京时间 00:30–08:30 谷时规则，不含节假日调整。')
+    } else if (settingsPage === 'sound') {
+      toggle('开启声音', state.soundOn, function (on) { state.soundOn = on; saveSound(); if (!on) stopPlaying() })
+      numeric(element('div', null, content, 'dshvk1-setting'), '总音量', state.volume, 0, 100, 1, function (v) { state.volume = v; saveSound() }, 'range')
+      CUE_NAMES.forEach(function (name, i) {
+        numeric(element('div', null, content, 'dshvk1-setting'), name, state.cueVolumes[i], 0, 100, 1, function (v) { state.cueVolumes[i] = v; saveOptions() }, 'range')
+        action(content, '试听' + name, function () { playPool(cuePools[i]) })
+      })
+      hint('总音量与分项音量相乘；调至 0% 可单独静音该音效。')
+    } else if (settingsPage === 'demo') {
+      hint('仅本地演示，不发起实际扣费或充值，也不计入今日消费。刷新余额可清除演示数字与未领取的饭盆。')
+      var demoActions = element('div', null, content, 'dshvk1-actions')
+      action(demoActions, '单次扣费', function () { makeTick(STEP, true); updateScreen() })
+      action(demoActions, '十次扣费', function () { state.demoAmount = STEP; state.demoLeft = 10 })
+      var count = 10, amount = 3
+      numeric(element('div', null, content, 'dshvk1-setting'), '自定义扣费次数', count, 1, 10000, 1, function (v) { count = v })
+      action(content, '演示自定义扣费', function () { state.demoAmount = STEP; state.demoLeft = count })
+      numeric(element('div', null, content, 'dshvk1-setting'), '自定义充值金额（元）', amount, 0.01, 1000000, 0.01, function (v) { amount = v })
+      action(content, '模拟充值 3 元', function () { startCredit(3, true); settings.close() })
+      action(content, '演示自定义充值', function () { startCredit(amount, true); settings.close() })
+      action(content, '打开火控雷达', function () { state.radarManual = true; settings.close() })
+    } else renderLibrary()
+  }
+
+  var CUE_NAMES = ['掉血音效', '回血音效', '铁盆落头音效', '双击取盆音效']
+  var DEFAULT_SOUNDS = [HIT_SOUND, FEED_SOUND, BASE + '/pot_land.mp3', BASE + '/pot_off.mp3']
+  var soundDb = null, audioContext = null, previewAudio = null, previewUrl = null
+  var clips = [], activeClips = {}, libraryStatus = ''
+  function stopPool(pool) {
+    pool.pool.forEach(function (a) { clearTimeout(a.trimTimer); a.pause(); a.removeAttribute('src'); a.load() })
+    if (pool.url) URL.revokeObjectURL(pool.url)
+  }
+  function stopPlaying() {
+    cuePools.forEach(function (p) { p.pool.forEach(function (a) { clearTimeout(a.trimTimer); a.pause() }) })
+    stopPreview()
+  }
+  function stopPreview() {
+    if (previewAudio) { previewAudio.pause(); previewAudio.removeAttribute('src'); previewAudio.load(); previewAudio = null }
+    if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null }
+  }
+  function stopAudio() {
+    stopPreview(); cuePools.forEach(stopPool)
+    if (audioContext) audioContext.close().catch(function () {})
+  }
+  function activateClip(cue, id, persist) {
+    var clip = clips.find(function (c) { return c.id === id && c.cue === cue })
+    stopPool(cuePools[cue])
+    var url = clip ? URL.createObjectURL(clip.rendered) : DEFAULT_SOUNDS[cue]
+    var p = makePool(url, cue === 0 ? 4 : 2)
+    p.cue = cue; if (clip) p.url = url
+    cuePools[cue] = p
+    hitPool = cuePools[0]; feedPool = cuePools[1]; landPool = cuePools[2]; offPool = cuePools[3]
+    activeClips[cue] = clip ? clip.id : ''
+    if (persist) try { localStorage.setItem('dsh-vk1-active-clips', JSON.stringify(activeClips)) } catch (e) {}
+  }
+  function dbChange(mode, value) {
+    return new Promise(function (resolve, reject) {
+      if (!soundDb) return reject(new Error('浏览器音效存储不可用'))
+      var tx = soundDb.transaction('clips', 'readwrite')
+      var store = tx.objectStore('clips')
+      if (mode === 'put') store.put(value)
+      else store.delete(value)
+      tx.oncomplete = resolve; tx.onerror = function () { reject(tx.error || new Error('音效保存失败')) }
+      tx.onabort = function () { reject(tx.error || new Error('音效保存中止')) }
+    })
+  }
+  function initSoundLibrary() {
+    try {
+      activeClips = JSON.parse(localStorage.getItem('dsh-vk1-active-clips') || '{}') || {}
+      var request = indexedDB.open('dsh-vk1-sounds', 1)
+      request.onupgradeneeded = function () { request.result.createObjectStore('clips', { keyPath: 'id' }) }
+      request.onerror = function () { libraryStatus = '浏览器音效存储不可用，仍可使用出厂音效。' }
+      request.onsuccess = function () {
+        if (stopped) { request.result.close(); return }
+        soundDb = request.result
+        soundDb.onversionchange = function () { soundDb.close(); soundDb = null }
+        var get = soundDb.transaction('clips', 'readonly').objectStore('clips').getAll()
+        get.onsuccess = function () {
+          if (stopped) return
+          clips = get.result
+          CUE_NAMES.forEach(function (_, i) { activateClip(i, activeClips[i], false) })
+          if (settings.open && settingsPage === 'library') renderSettings()
+        }
+      }
+    } catch (e) { libraryStatus = '浏览器音效存储不可用，仍可使用出厂音效。' }
+  }
+  async function decodeSound(blob) {
+    if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)()
+    return audioContext.decodeAudioData(await blob.arrayBuffer())
+  }
+  function wavBlob(buffer, start, end, gain) {
+    var first = Math.floor(start * buffer.sampleRate)
+    var lastFrame = Math.min(buffer.length, Math.floor(end * buffer.sampleRate))
+    var count = lastFrame - first, channels = Math.min(2, buffer.numberOfChannels)
+    if (count <= 0) throw new Error('终点必须大于起点')
+    var data = new ArrayBuffer(44 + count * channels * 2), view = new DataView(data)
+    function chars(offset, s) { for (var i = 0; i < s.length; i++) view.setUint8(offset + i, s.charCodeAt(i)) }
+    chars(0, 'RIFF'); view.setUint32(4, data.byteLength - 8, true); chars(8, 'WAVEfmt ')
+    view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, channels, true)
+    view.setUint32(24, buffer.sampleRate, true); view.setUint32(28, buffer.sampleRate * channels * 2, true)
+    view.setUint16(32, channels * 2, true); view.setUint16(34, 16, true); chars(36, 'data')
+    view.setUint32(40, count * channels * 2, true)
+    for (var c = 0; c < channels; c++) {
+      var samples = buffer.getChannelData(c)
+      for (var f = 0; f < count; f++) {
+        var sample = clamp(samples[first + f] * gain / 100, -1, 1)
+        view.setInt16(44 + (f * channels + c) * 2, sample * (sample < 0 ? 32768 : 32767), true)
+      }
+    }
+    return new Blob([data], { type: 'audio/wav' })
+  }
+  function renderLibrary() {
+    hint('音频只保存在本浏览器，不上传服务器。支持浏览器能解码的 MP3 / WAV / M4A / AAC / FLAC / OGG 等，单文件最大 50 MB。')
+    var select = element('select', null, content)
+    select.setAttribute('aria-label', '选择音效类别')
+    CUE_NAMES.forEach(function (name, i) { var o = element('option', name, select); o.value = i })
+    select.value = libraryCue
+    select.addEventListener('change', function () { libraryCue = Number(select.value); renderSettings() })
+    var actions = element('div', null, content, 'dshvk1-actions')
+    action(actions, '恢复出厂音效', function () { activateClip(libraryCue, '', true); renderSettings() })
+    action(actions, '试听当前音效', function () { playPool(cuePools[libraryCue]) })
+    var status = element('p', libraryStatus, content, 'dshvk1-status'); status.setAttribute('role', 'status')
+    var file = element('input', null, content)
+    file.type = 'file'; file.accept = '.mp3,.wav,.m4a,.wma,.aac,.flac,.ogg,audio/*'
+    file.setAttribute('aria-label', '导入本地音效')
+    file.disabled = !soundDb
+    file.addEventListener('change', async function () {
+      var selected = file.files[0], cue = libraryCue, generation = renderGeneration
+      if (!selected) return
+      if (selected.size > 50 * 1024 * 1024) { status.textContent = '文件过大，最大 50 MB。'; return }
+      file.disabled = true; status.textContent = '正在解码音频…'
+      try {
+        var buffer = await decodeSound(selected)
+        if (stopped || generation !== renderGeneration || !settings.open) return
+        if (!isFinite(buffer.duration) || buffer.duration <= 0) throw new Error('音频为空')
+        editClip({ id: crypto.randomUUID(), cue: cue, name: selected.name.replace(/\.[^.]+$/, '').slice(0, 80), source: selected, start: 0, end: buffer.duration, gain: 100 }, buffer)
+      } catch (e) { if (!stopped && generation === renderGeneration) { status.textContent = '无法读取音频：' + e.message; file.disabled = !soundDb } }
+    })
+    hint('当前：' + ((clips.find(function (c) { return c.id === activeClips[libraryCue] }) || {}).name || '出厂音效'))
+    clips.filter(function (c) { return c.cue === libraryCue }).forEach(function (clip) {
+      var row = element('div', null, content, 'dshvk1-clip')
+      element('strong', clip.name + (activeClips[libraryCue] === clip.id ? ' · 使用中' : ''), row)
+      var buttons = element('div', null, row, 'dshvk1-actions')
+      action(buttons, '使用', function () { activateClip(clip.cue, clip.id, true); renderSettings() })
+      action(buttons, '修改', async function () {
+        var generation = renderGeneration
+        try { var buffer = await decodeSound(clip.source); if (!stopped && generation === renderGeneration && settings.open) editClip(Object.assign({}, clip), buffer) }
+        catch (e) { if (!stopped) status.textContent = '无法读取音频：' + e.message }
+      })
+      action(buttons, '删除', async function () {
+        try {
+          await dbChange('delete', clip.id)
+          if (stopped) return
+          clips = clips.filter(function (c) { return c.id !== clip.id })
+          if (activeClips[clip.cue] === clip.id) activateClip(clip.cue, '', true)
+          renderSettings()
+        } catch (e) { status.textContent = '删除失败：' + e.message }
+      })
+    })
+  }
+  function editClip(clip, buffer) {
+    content.textContent = ''; renderGeneration++
+    element('h3', '剪辑音效 · ' + CUE_NAMES[clip.cue], content)
+    var nameLabel = element('label', '音效名称', content)
+    var name = element('input', null, nameLabel); name.type = 'text'; name.maxLength = 80; name.value = clip.name
+    var canvas = element('canvas', null, content, 'dshvk1-wave'); canvas.width = 560; canvas.height = 100
+    canvas.setAttribute('aria-label', '音频波形及裁剪范围')
+    function drawWave() {
+      var ctx = canvas.getContext('2d'), samples = buffer.getChannelData(0)
+      ctx.clearRect(0, 0, 560, 100); ctx.fillStyle = '#7a8fd1'
+      for (var x = 0; x < 560; x++) {
+        var first = Math.floor(x * samples.length / 560), last = Math.floor((x + 1) * samples.length / 560), peak = 0
+        for (var i = first; i < last; i++) peak = Math.max(peak, Math.abs(samples[i]))
+        ctx.fillRect(x, 50 - peak * 46, 1, Math.max(1, peak * 92))
+      }
+      ctx.fillStyle = '#355ce833'
+      ctx.fillRect(560 * clip.start / buffer.duration, 0, 560 * (clip.end - clip.start) / buffer.duration, 100)
+    }
+    var fields = element('div', null, content, 'dshvk1-setting')
+    numeric(fields, '起点（秒）', clip.start, 0, buffer.duration, 0.001, function (v) { clip.start = v; drawWave() })
+    numeric(fields, '终点（秒）', clip.end, 0, buffer.duration, 0.001, function (v) { clip.end = v; drawWave() })
+    numeric(element('div', null, content, 'dshvk1-setting'), '音量增益', clip.gain, 0, 200, 1, function (v) { clip.gain = v }, 'range')
+    var status = element('p', '', content, 'dshvk1-status'); status.setAttribute('role', 'status')
+    var buttons = element('div', null, content, 'dshvk1-actions')
+    action(buttons, '试听剪辑', function () {
+      try { stopPreview(); previewUrl = URL.createObjectURL(wavBlob(buffer, clip.start, clip.end, clip.gain)); previewAudio = new Audio(previewUrl); previewAudio.volume = state.soundOn ? state.volume / 100 * state.cueVolumes[clip.cue] / 100 : 0; previewAudio.play().catch(function () { status.textContent = '浏览器暂时阻止了播放，请再次点击试听。' }) }
+      catch (e) { status.textContent = e.message }
+    })
+    var save = action(buttons, '保存并使用', async function () {
+      try {
+        save.disabled = true
+        clip.name = name.value.trim() || '自定义音效'
+        clip.rendered = wavBlob(buffer, clip.start, clip.end, clip.gain)
+        await dbChange('put', clip)
+        if (stopped) return
+        clips = clips.filter(function (c) { return c.id !== clip.id }); clips.push(clip)
+        activateClip(clip.cue, clip.id, true); stopPreview(); renderSettings()
+      } catch (e) { status.textContent = '保存失败：' + e.message; save.disabled = false }
+    })
+    action(buttons, '取消', function () { stopPreview(); renderSettings() })
+    drawWave()
+  }
+
   // ----------------------------------------------------------------- start ---
   try {
     var savedSize = parseInt(localStorage.getItem(SIZE_KEY) || '', 10)
@@ -1751,12 +2228,21 @@
       state.soundOn = s.on !== false
       state.volume = typeof s.vol === 'number' && s.vol >= 0 && s.vol <= 100 ? s.vol : 80
     }
+    var options = JSON.parse(localStorage.getItem(OPTIONS_KEY) || 'null')
+    if (options) {
+      ;['fxBowl', 'fxPat', 'fxHurt'].forEach(function (key) { state[key] = options[key] !== false })
+      if (['auto', 'light', 'dark'].indexOf(options.theme) >= 0) state.theme = options.theme
+      if (Array.isArray(options.cueVolumes) && options.cueVolumes.length === 4) state.cueVolumes = options.cueVolumes.map(function (n) { return isFinite(n) ? clamp(Number(n), 0, 100) : 100 })
+    }
+    var usage = JSON.parse(localStorage.getItem(USAGE_KEY) || 'null')
+    if (usage && usage.day === usageDay() && [usage.base, usage.topup, usage.last, usage.used].every(function (n) { return typeof n === 'number' && isFinite(n) })) state.usage = usage
   } catch (err) {}
 
   layout()
   if (!applyAnchorPos()) { state.h = 'right'; state.v = 'bottom'; state.hOff = 0; state.vOff = 0; settle() }
   updateScreen()
   setupHitTest()
+  initSoundLibrary()
 
   rafId = requestAnimationFrame(frame)
   poll(false)
@@ -1778,6 +2264,10 @@
     document.removeEventListener('pointermove', onCursor, true)
     document.removeEventListener('contextmenu', onContextMenu, true)
     document.removeEventListener('pointerdown', onDocMenuClose, true)
+    document.removeEventListener('pointerleave', pointerLeft)
+    document.removeEventListener('keydown', onEscape, true)
+    window.removeEventListener('blur', pointerLeft)
+    window.removeEventListener('error', onWidgetError)
     removeDragListeners()
     window.removeEventListener('resize', onResize)
     try { if (document.body) document.body.style.cursor = '' } catch (err) {}
@@ -1785,6 +2275,9 @@
     detach(stage)
     detach(root)
     detach(menu)
+    detach(settings)
+    stopAudio()
+    if (soundDb) soundDb.close()
     window.__dshVk1Widget = false
   }
   window.__dshAppearanceWidgets = window.__dshAppearanceWidgets || {}
