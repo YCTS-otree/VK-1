@@ -2,7 +2,7 @@
 
 把大肥鱼桌宠搬进 DSH：她举着平板显示 DeepSeek 余额，花钱时MC受击，充值时掉米饭盆。
 
-**插件版本：1.1.0** · 维护者：[YCTS-otree](https://github.com/YCTS-otree) · [报告 BUG / 提建议](https://github.com/YCTS-otree/VK-1/issues) · [更新记录](https://github.com/YCTS-otree/VK-1/blob/main/CHANGELOG.md)
+**插件版本：1.1.1** · 维护者：[YCTS-otree](https://github.com/YCTS-otree) · [报告 BUG / 提建议](https://github.com/YCTS-otree/VK-1/issues) · [更新记录](https://github.com/YCTS-otree/VK-1/blob/main/CHANGELOG.md)
 
 本项目由 [VKmich16/VK-1](https://github.com/VKmich16/VK-1) 的 `大肥鱼桌宠改_D-16BVM` 移植而来，作为 DSH bundle 在网页界面中运行。美术、音效与原版行为来自上游；本仓库由原作者授权指定的插件负责人 YCTS-otree 维护，负责 DSH 插件实现及兼容。
 
@@ -17,7 +17,7 @@
 
    > 安装这个插件：https://github.com/YCTS-otree/VK-1
 
-3. 安装完成后，重启 `dsh web`，再刷新页面。
+3. 安装后点击“立即启用”。支持热加载的 DSH 可直接加载；若提示需要重启，再重启 `dsh web`。同名插件升级需先卸载登记再安装新版，浏览器已有脚本是否自动替换取决于外观管理器。
 
 DSH 需要已配置 `DEEPSEEK_API_KEY` 凭据。插件通过 DSH 凭据服务读取，不需要额外的平台会话令牌，也不用把 Key 发到聊天里。
 
@@ -41,7 +41,7 @@ DSH 需要已配置 `DEEPSEEK_API_KEY` 凭据。插件通过 DSH 凭据服务读
 
 通过现有 DSH profile 的包管理流程解析依赖，再重启 Web 服务。仅运行 `dsh plugin --profile web add <dsh-plugin 绝对路径>` 不会完成 bundle 登记，推荐仍让 DSH 的安装工具处理。
 
-独立发布包在 `Release/v1.1.0/dsh-plugin/`，也可交给同一个安装工具。
+独立发布包在 `Release/v1.1.1/dsh-plugin/`，也可交给同一个安装工具。
 
 </details>
 
@@ -99,9 +99,9 @@ DSH 需要已配置 `DEEPSEEK_API_KEY` 凭据。插件通过 DSH 凭据服务读
 
 ## 版本与开发
 
-插件版本以 `dsh-plugin/package.json` 为准，规范化基线为 **1.0.0**（前身版本为 0.2.0），当前维护版本为 **1.1.0**。新增功能递增 MINOR，修复和小改进递增 PATCH，MAJOR 由维护者决定。
+插件版本以 `dsh-plugin/package.json` 为准，规范化基线为 **1.0.0**（前身版本为 0.2.0），当前维护版本为 **1.1.1**。新增功能递增 MINOR，修复和小改进递增 PATCH，MAJOR 由维护者决定。
 
-上游 **v11** 是原有移植基线，**2026 版**为本次新增来源；两者与插件版本无关。`index-v11.js` 的文件名保留用于 Loader 缓存兼容。
+上游 **v11** 是原有移植基线，**2026 版**为新增来源；两者与插件版本无关。宿主入口现为 `index-v12.js`：后缀用于绕开 Loader 旧模块缓存，更新宿主代码时必须递增。
 
 使用已有 Node.js 与 npm，无需安装额外依赖：
 
@@ -115,7 +115,7 @@ npm --prefix dsh-plugin run release
 
 `preview` 在 `http://127.0.0.1:4317` 提供真实 bundle 注入和素材路由的模拟余额页面，可离线验证界面、充值、扣费与卸载重挂载；不访问真实账号。当前验证范围见 [tools/VALIDATION.md](https://github.com/YCTS-otree/VK-1/blob/main/tools/VALIDATION.md)。
 
-发布工具输出 `Release/v<版本>/dsh-plugin/` 与 SHA-256 清单，已有版本目录拒绝覆盖。推荐使用 1.1.0 或更新版本；1.0.0/1.0.1 的历史 SHA-256 清单受 Windows 换行影响，不作为完整性校验依据。版本更新同步 README 和 CHANGELOG。见[维护规则](https://github.com/YCTS-otree/VK-1/blob/main/AGENTS.md)和[贡献说明](https://github.com/YCTS-otree/VK-1/blob/main/CONTRIBUTING.md)。
+发布工具输出 `Release/v<版本>/dsh-plugin/` 与 SHA-256 清单，已有版本目录拒绝覆盖。推荐使用 1.1.1 或更新版本；1.0.0/1.0.1 的历史 SHA-256 清单受 Windows 换行影响，不作为完整性校验依据。版本更新同步 README 和 CHANGELOG。见[维护规则](https://github.com/YCTS-otree/VK-1/blob/main/AGENTS.md)和[贡献说明](https://github.com/YCTS-otree/VK-1/blob/main/CONTRIBUTING.md)。
 
 ## 来源与许可
 

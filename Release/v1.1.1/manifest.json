@@ -1,0 +1,27 @@
+{
+  "name": "dsh-vk1-balance-widget",
+  "version": "1.1.1",
+  "sha256": {
+    "dsh-plugin/package.json": "606bdd5523344dd07b10b8ac471368bc44cb774026a352954158c6c4e0480073",
+    "dsh-plugin/LICENSE": "3b5af361fc1946ca8e815542acae285778aaf86114313fe21e3fe578ac0516c2",
+    "dsh-plugin/README.md": "5598b2aa5bfe43226d8e31769bdf2299d40ffc7b6a1eb0a26e9b32253dea2291",
+    "dsh-plugin/index-v12.js": "4ee76c7a0612295e7955fb43b8cd5021481361ec0f0c27f4f5eaaa9375870935",
+    "dsh-plugin/widget.js": "42904c3c1e6961c5c2fa66addfbb77e2d6a362d5320097c58c7f671bc1f549a7",
+    "dsh-plugin/cordis.patch.yml": "a5754d058fc1257a99e8cb6c1d4a71b48fbb508003a720bc4c24812088835eff",
+    "dsh-plugin/assets/expression_11.png": "974b567a142adaaa5682fa39ddb746f1bad67cd3e16ef2c5797d44ce8bb5b3f3",
+    "dsh-plugin/assets/expression_12.png": "6ac5cf2c8a774b271a0a9980dd75f8354f15da01b2591cd3fa3f308d6eee2e45",
+    "dsh-plugin/assets/expression_21.png": "ece78bef3c4ba2d23382522102c0214a7dafa35482d5f31204c638fd8dfccffc",
+    "dsh-plugin/assets/expression_22.png": "ce5ac43bc5c27dedeffb449f40a3db1bdd383613bd93ce8025f4ee815ff36b41",
+    "dsh-plugin/assets/feed.mp3": "c44abec2ab2ab3165e68add62e577d02f5011e139a00c7ee1e84370311835903",
+    "dsh-plugin/assets/hit.mp3": "43fa877b537d8cbfbd676d76109b9a960551bfeae06c62e2d1a7d64d3994cb29",
+    "dsh-plugin/assets/iron_bowl.png": "c659031066afd2d3c7c06165a70fdb9e053de590387198f40d8b172958c88c0d",
+    "dsh-plugin/assets/pat_hand_0.png": "50989a5017f2c82955ea456c25ce14a6c49546b3143c89f049bbe0f2a1458d15",
+    "dsh-plugin/assets/pat_hand_1.png": "3c9e2f63652bc1efaa199c3145ca5f6acb6a0a83131fa9f362bf96fc8f9c230d",
+    "dsh-plugin/assets/pat_hand_2.png": "203b68f261dbc3fbeef49f11a2dcb3bbe0a51a1b48f9bff836a88e1a74b8dce2",
+    "dsh-plugin/assets/pat_hand_3.png": "03f69db247797823806438b1cfb4ecc61bce2a3ffbf13add52b4d97c6b8ebda7",
+    "dsh-plugin/assets/pat_hand_4.png": "fab66e24f3acd3466492f25efb1f361503c163ab294f9fef1e4c4acc6b5ac64d",
+    "dsh-plugin/assets/pot_land.mp3": "41d35ed3982c68abae6b684dc23af2f7fb86a7c71aedf5b0848666ad99fca393",
+    "dsh-plugin/assets/pot_off.mp3": "1a83e306b14e8ac1e7be858f945173ed52564d7f3f1cf64314e254ca353a09ac",
+    "dsh-plugin/assets/rice.png": "b81d4e923e535d3107a936fa56714cf22170492a76a08d8fa904cbc1533cb23b"
+  }
+}

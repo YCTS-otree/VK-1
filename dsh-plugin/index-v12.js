@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 // ============================================================================
-// dsh-vk1-balance-widget —— Host half
+// dsh-vk1-balance-widget —— Host half (v12 cache identity)
 //
 //   VK-1 余额挂件的宿主侧。上游是「大肥鱼桌宠改_D-16BVM」(v11)：四表情 / 米盆
 //   充值 / 铁盆 / 火控雷达名牌，全部由 widget.js 在页面内实现。
