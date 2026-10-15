@@ -1,0 +1,29 @@
+{
+  "name": "dsh-vk1-balance-widget",
+  "version": "1.2.0",
+  "sha256": {
+    "dsh-plugin/package.json": "71a14e987c93270f1a96df92175f67175bd1f69644728169451edbf54cb3361a",
+    "dsh-plugin/LICENSE": "3b5af361fc1946ca8e815542acae285778aaf86114313fe21e3fe578ac0516c2",
+    "dsh-plugin/README.md": "ad6200db2cd33e3d3a0b00a84a2836681d046880eba7142a8c20a0984577fb9b",
+    "dsh-plugin/index-v13.js": "2774af30945b2321bb42a23d3db46a8147e72b59dd5ebc9dd49a65540cc52ff3",
+    "dsh-plugin/update-checker-v1.js": "b3982c7d0e3988e3c77f80a127b6cad62bf9d071d7e467a1f54d84d2ceaa26e9",
+    "dsh-plugin/asset-sources.json": "b426c7152e8a948ca2281166eb9233fccfcc261ec66ac968a002c724c4d1994b",
+    "dsh-plugin/widget.js": "69c24178c6234e5a482f758aded9ea675a88bca31d13053416b0229026194c1c",
+    "dsh-plugin/cordis.patch.yml": "7d4f9cf1987fa202a14e853763019ea958dbf2a1d8af21ee21df0e802ca43d1a",
+    "dsh-plugin/assets/expression_11.png": "53e3d2c41bca1ca87cf8d9ba345d13260724c3f54263f59bce850343ab7c2d37",
+    "dsh-plugin/assets/expression_12.png": "7b0c82e6934018d628bea353eb81b7f75c70cbcdafa7d3437f2fdf90be11339e",
+    "dsh-plugin/assets/expression_21.png": "a86377a30d440d1db5a58a70d0762890fd1b31b86e6827ab383f612ef979a336",
+    "dsh-plugin/assets/expression_22.png": "595bc52671432c69b6f7793772cb3dba27b1add754ac7750748c04cc8e41929f",
+    "dsh-plugin/assets/feed.mp3": "c44abec2ab2ab3165e68add62e577d02f5011e139a00c7ee1e84370311835903",
+    "dsh-plugin/assets/hit.mp3": "43fa877b537d8cbfbd676d76109b9a960551bfeae06c62e2d1a7d64d3994cb29",
+    "dsh-plugin/assets/iron_bowl.png": "dcc476092db268f7be1c6bae862560fa754aca77e80d6179fc068b19af46f5e6",
+    "dsh-plugin/assets/pat_hand_0.png": "50989a5017f2c82955ea456c25ce14a6c49546b3143c89f049bbe0f2a1458d15",
+    "dsh-plugin/assets/pat_hand_1.png": "3c9e2f63652bc1efaa199c3145ca5f6acb6a0a83131fa9f362bf96fc8f9c230d",
+    "dsh-plugin/assets/pat_hand_2.png": "203b68f261dbc3fbeef49f11a2dcb3bbe0a51a1b48f9bff836a88e1a74b8dce2",
+    "dsh-plugin/assets/pat_hand_3.png": "03f69db247797823806438b1cfb4ecc61bce2a3ffbf13add52b4d97c6b8ebda7",
+    "dsh-plugin/assets/pat_hand_4.png": "fab66e24f3acd3466492f25efb1f361503c163ab294f9fef1e4c4acc6b5ac64d",
+    "dsh-plugin/assets/pot_land.mp3": "41d35ed3982c68abae6b684dc23af2f7fb86a7c71aedf5b0848666ad99fca393",
+    "dsh-plugin/assets/pot_off.mp3": "1a83e306b14e8ac1e7be858f945173ed52564d7f3f1cf64314e254ca353a09ac",
+    "dsh-plugin/assets/rice.png": "13ec19c6477c3b96bf8af7851d415bcfcca273706cef377b0d41d801149eee02"
+  }
+}

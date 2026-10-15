@@ -1,5 +1,5 @@
 import http from 'node:http'
-import { apply } from '../dsh-plugin/index-v12.js'
+import { apply } from '../dsh-plugin/index-v13.js'
 const routes = new Map()
 let transform, dispose, balance = 100
 apply({ webServer: { register(route) { routes.set(route.path, route); return () => {} }, tapIndex(fn) { transform = fn; return () => {} } }, credentials: {}, effect(fn) { dispose = fn() } })

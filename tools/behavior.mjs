@@ -43,7 +43,7 @@ function fixture(saved = {}) {
     localStorage: { getItem: k => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v) },
   })
   context.window = context
-  const hook = `window.test = { state, pat, settings, hands, applyBalance, startCredit, onRiceFed, newBowl, dropIronPot, attachIronPot, ironHeadAnchor, ironStackIndex, ironOnHead, knockPotOff, updateBowls, updatePat, blockPat, tickTablet, updateTablet, onTablet, frame, makeTick, noteUsage, saveOptions, showSettings, wavBlob, stop, ready() { hitReady = true } };`
+  const hook = `window.test = { state, pat, settings, hands, applyBalance, startCredit, onRiceFed, newBowl, dropIronPot, attachIronPot, ironHeadAnchor, ironStackIndex, ironOnHead, knockPotOff, updateBowls, updatePat, updateExpression, alphaBounds, blockPat, tickTablet, updateTablet, onTablet, frame, makeTick, noteUsage, saveOptions, showSettings, wavBlob, stop, ready() { hitReady = true } };`
   vm.runInContext(source.replace('  window.__dshAppearanceWidgets = window.__dshAppearanceWidgets || {}', hook + '\n  window.__dshAppearanceWidgets = window.__dshAppearanceWidgets || {}'), context)
   return { ...context.test, storage, documentEvents, windowEvents }
 }
@@ -145,3 +145,30 @@ function fixture(saved = {}) {
   assert.ok([...t.documentEvents.values(), ...t.windowEvents.values()].every(set => set.size === 0), 'unmount removes every global listener')
 }
 console.log('Verified modern widget behavior: settlement, isolated demos, switches, stroke timing, pot stacks, usage, settings, WAV trim/gain and persistence.')
+
+{
+  const t = fixture(); t.applyBalance(10, false)
+  t.updateExpression(0.016); assert.equal(t.state.expr, 'happy')
+  t.pat.active = true; t.updateExpression(0.016)
+  assert.equal(t.state.expr, 'nervous', 'a pat must show upstream expression_22 (eyes shut), not the idle smile')
+  t.state.real = 0; t.updateExpression(0.016)
+  assert.equal(t.state.expr, 'nervous', 'pat face takes precedence over zero balance')
+  t.pat.active = false; t.updateExpression(0.016)
+  assert.equal(t.state.expr, 'aloof', 'zero balance resumes its face immediately after a pat')
+  t.state.real = 10; t.dropIronPot(300, 300); t.attachIronPot(t.state.bowls[0])
+  t.makeTick(0.01, true); t.updateExpression(0.016)
+  assert.equal(t.state.expr, 'calm', 'a worn pot keeps the upstream calm face during a charge')
+  t.state.bowls = []; t.updateExpression(0.016); assert.equal(t.state.expr, 'nervous')
+  t.state.hits = []; t.updateExpression(0.016)
+  assert.equal(t.state.expr, 'happy', 'no stale charge expression after the animation ends')
+  t.state.fxHurt = false; t.state.demoLeft = 10; t.updateExpression(0.016)
+  assert.equal(t.state.expr, 'happy', 'disabled charge effects cannot change the face')
+  const pixels = new Uint8ClampedArray(4 * 4 * 4)
+  pixels[(1 * 4 + 1) * 4 + 3] = 255
+  pixels[(2 * 4 + 2) * 4 + 3] = 9
+  pixels[3] = 8
+  assert.equal(JSON.stringify(t.alphaBounds(pixels, 4, 4)), JSON.stringify({ x: 1, y: 1, w: 2, h: 2 }), 'HD pot trim uses upstream alpha > 8 and retains source-pixel bounds')
+  assert.equal(t.alphaBounds(new Uint8ClampedArray(16), 2, 2), null)
+  t.stop()
+}
+console.log('Verified upstream expression priorities and HD art alpha-crop bounds.')

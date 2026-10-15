@@ -11,11 +11,24 @@ const pkg = JSON.parse(fs.readFileSync(path.join(bundle, 'package.json'), 'utf8'
 assert.match(pkg.version, /^\d+\.\d+\.\d+$/)
 const entry = pkg.exports['.']
 assert.ok(fs.readFileSync(path.join(bundle, 'cordis.patch.yml'), 'utf8').includes(`name: ${entry}`))
-for (const file of [entry, 'widget.js']) {
+for (const file of [entry, 'widget.js', 'update-checker-v1.js']) {
   const result = spawnSync(process.execPath, ['--check', path.join(bundle, file)], { encoding: 'utf8' })
   assert.equal(result.status, 0, result.stderr)
 }
 for (const file of pkg.files) assert.ok(fs.existsSync(path.join(bundle, file)), file)
+const provenance = JSON.parse(fs.readFileSync(path.join(bundle, 'asset-sources.json'), 'utf8'))
+assert.equal(provenance.assets.length, 15)
+for (const asset of provenance.assets) {
+  const bytes = fs.readFileSync(path.join(bundle, 'assets', asset.file))
+  const checksum = crypto.createHash('sha256').update(bytes).digest('hex')
+  assert.equal(checksum, asset.sha256, `asset checksum: ${asset.file}`)
+  assert.equal(checksum, asset.sourceSha256, `must distribute original upstream bytes: ${asset.file}`)
+  if (asset.file.endsWith('.png')) {
+    assert.equal(bytes.readUInt32BE(16), asset.width)
+    assert.equal(bytes.readUInt32BE(20), asset.height)
+  }
+}
+for (const n of ['11', '12', '21', '22']) assert.equal(provenance.assets.find(a => a.file === `expression_${n}.png`).width, 1024)
 const plugin = await import(pathToFileURL(path.join(bundle, entry)))
 assert.equal(plugin.name, pkg.name)
 const routes = new Map()
@@ -88,3 +101,4 @@ if (fs.existsSync(release)) {
 }
 console.log(`Verified plugin ${pkg.version}: syntax, entry, assets, routes, injection, cleanup and current release checksums.`)
 await import('./behavior.mjs')
+await import('./update-checker.test.mjs')

@@ -1,9 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import os from 'node:os'
 import { fileURLToPath } from 'node:url'
+import { createUpdateChecker } from './update-checker-v1.js'
 
 // ============================================================================
-// dsh-vk1-balance-widget —— Host half (v12 cache identity)
+// dsh-vk1-balance-widget —— Host half (v13 cache identity)
 //
 //   VK-1 余额挂件的宿主侧。上游是「大肥鱼桌宠改_D-16BVM」(v11)：四表情 / 米盆
 //   充值 / 铁盆 / 火控雷达名牌，全部由 widget.js 在页面内实现。
@@ -17,6 +19,8 @@ const PACKAGE_ROOT = path.dirname(fileURLToPath(import.meta.url))
 const ASSETS = path.join(PACKAGE_ROOT, 'assets')
 const BALANCE_URL = 'https://api.deepseek.com/user/balance'
 const BALANCE_TTL_MS = 8000
+const VERSION = JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf8')).version
+const UPDATE_STATE = path.join(process.env.DSH_HOME || path.join(os.homedir(), '.dsh'), 'storages', 'dsh-vk1-balance-widget', 'update-state.json')
 
 const JSON_HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
@@ -49,6 +53,26 @@ function apply(ctx) {
   let widgetSource = null
   let balanceCache = null
   let balanceInFlight = null
+  const updates = createUpdateChecker({
+    currentVersion: VERSION,
+    readState: () => JSON.parse(fs.readFileSync(UPDATE_STATE, 'utf8')),
+    saveState: state => {
+      fs.mkdirSync(path.dirname(UPDATE_STATE), { recursive: true })
+      const temporary = UPDATE_STATE + '.' + process.pid + '.tmp'
+      try {
+        fs.writeFileSync(temporary, JSON.stringify(state) + '\n', 'utf8')
+        fs.renameSync(temporary, UPDATE_STATE)
+      } finally { try { fs.unlinkSync(temporary) } catch {} }
+    },
+    fetchVersion: async signal => {
+      const res = await fetch('https://raw.githubusercontent.com/YCTS-otree/VK-1/main/dsh-plugin/package.json', {
+        signal: AbortSignal.any([signal, AbortSignal.timeout(10000)]),
+        headers: { Accept: 'application/json' }, cache: 'no-store',
+      })
+      if (!res.ok) throw new Error('Update server unavailable')
+      return (await res.json()).version
+    },
+  })
 
   function readWidget() {
     if (widgetSource === null) widgetSource = fs.readFileSync(path.join(PACKAGE_ROOT, 'widget.js'), 'utf8')
@@ -210,9 +234,18 @@ function apply(ctx) {
     return html + tag
   }))
 
-  ctx.effect(() => () => {
-    for (const d of disposers) {
-      try { d() } catch (err) {}
+  disposers.push(ctx.webServer.register({
+    kind: 'exact', path: '/dsh-vk1/update.json',
+    handler: (req, res) => { res.writeHead(200, JSON_HEADERS); res.end(JSON.stringify(updates.snapshot())) },
+  }))
+
+  ctx.effect(() => {
+    updates.start()
+    return () => {
+      updates.stop()
+      for (const d of disposers) {
+        try { d() } catch (err) {}
+      }
     }
   })
 }

@@ -2,7 +2,7 @@
 
 把大肥鱼桌宠搬进 DSH：她举着平板显示 DeepSeek 余额，花钱时MC受击，充值时掉米饭盆。
 
-**插件版本：1.1.1** · 维护者：[YCTS-otree](https://github.com/YCTS-otree) · [报告 BUG / 提建议](https://github.com/YCTS-otree/VK-1/issues) · [更新记录](https://github.com/YCTS-otree/VK-1/blob/main/CHANGELOG.md)
+**插件版本：1.2.0** · 维护者：[YCTS-otree](https://github.com/YCTS-otree) · [报告 BUG / 提建议](https://github.com/YCTS-otree/VK-1/issues) · [更新记录](https://github.com/YCTS-otree/VK-1/blob/main/CHANGELOG.md)
 
 本项目由 [VKmich16/VK-1](https://github.com/VKmich16/VK-1) 的 `大肥鱼桌宠改_D-16BVM` 移植而来，作为 DSH bundle 在网页界面中运行。美术、音效与原版行为来自上游；本仓库由原作者授权指定的插件负责人 YCTS-otree 维护，负责 DSH 插件实现及兼容。
 
@@ -41,7 +41,7 @@ DSH 需要已配置 `DEEPSEEK_API_KEY` 凭据。插件通过 DSH 凭据服务读
 
 通过现有 DSH profile 的包管理流程解析依赖，再重启 Web 服务。仅运行 `dsh plugin --profile web add <dsh-plugin 绝对路径>` 不会完成 bundle 登记，推荐仍让 DSH 的安装工具处理。
 
-独立发布包在 `Release/v1.1.1/dsh-plugin/`，也可交给同一个安装工具。
+独立发布包在 `Release/v1.2.0/dsh-plugin/`，也可交给同一个安装工具。
 
 </details>
 
@@ -53,6 +53,24 @@ DSH 需要已配置 `DEEPSEEK_API_KEY` 凭据。插件通过 DSH 凭据服务读
 - **铁盆与表情**：吃完饭留下铁盆，从上方落到头上可以堆叠，双击头部逐个取下；四种表情随状态切换。
 - **火控雷达**：饭盆闲置 10 秒后触发锁定，随后磁吸入账。
 - **位置与外观**：拖动定位、边缘吸附、位置记忆、右侧镜像和滚动条避让；菜单可调大小、声音和音量，也可演示扣费和充值。
+
+## 1.2.0 · 每日更新提示与高清素材
+
+### 更新检测细则
+
+- **只在插件启用时运行**。启用后检查一次，运行中每分钟判断是否跨日；停用或卸载时停止计时并取消未完成请求。
+- **按 DSH 宿主的本地自然日去重**，不是每隔 24 小时重新计时。同一天已经发起过检查，就不会再次访问更新源；重新启用、重载、重启 DSH 或打开多个浏览器标签也沿用该记录。持续启用时，跨日后在下一分钟判断时检查。
+- 检查来源固定为维护仓库 [YCTS-otree/VK-1 的插件 package.json](https://github.com/YCTS-otree/VK-1/blob/main/dsh-plugin/package.json)，按语义版本比较。不会检查原作者的桌面版本，不发送 API Key、余额或聊天内容。
+- 请求限时 10 秒。**检查失败也计入当天次数**，不在当天持续重试，次日再检查；检测记录保存在 `DSH_HOME/storages/dsh-vk1-balance-widget/update-state.json`（未设置 DSH_HOME 时使用用户目录的 `.dsh`）。保留这个文件才能跨重启去重；删除该记录视为未检查。
+- 发现更高版本后显示提示，并在角色右键菜单中保留“发现新版本”入口。点击“稍后”会在当前浏览器记住已忽略的版本，同一版本不再弹出；以后发现更高版本仍会提示。已知的新版本在后续检查失败时仍可提示。
+- **仅提示，不自动下载安装、替换文件或重启 DSH**。没有更新或检查失败时不弹窗打扰；安装新版仍由维护者决定。
+
+### 高清资源与表情修复
+
+- 四张角色差分改用上游 **1024×1024** 原文件；铁盆改用 **2880×2880** 高清原图。铁盆绘制时按上游 `alpha > 8` 规则裁掉透明留白，保留可见区域原始分辨率，再按挂件尺寸显示。
+- 五帧手部图片、饭盆和四种音效也已逐项核对：当前分发的 **15 个运行时素材均与上游原文件字节一致**。来源提交、路径、尺寸与 SHA-256 见随包提供的 `asset-sources.json`。
+- 修复抚摸表情映射：抚摸时显示上游 `expression_22` 闭眼差分，结束后立即回到对应状态；同步零余额傲娇、戴盆冷脸优先级，并取消扣费结束后的额外表情滞留。
+- 原生托盘和窗口控件 ICO 不参与网页绘制；网页控件继续使用 DOM 按钮。`sprite.png` 是原生备用图片，网页已具备完整四差分，不重复分发。
 
 ## 1.1.0 · 现代化功能同步
 
@@ -99,9 +117,9 @@ DSH 需要已配置 `DEEPSEEK_API_KEY` 凭据。插件通过 DSH 凭据服务读
 
 ## 版本与开发
 
-插件版本以 `dsh-plugin/package.json` 为准，规范化基线为 **1.0.0**（前身版本为 0.2.0），当前维护版本为 **1.1.1**。新增功能递增 MINOR，修复和小改进递增 PATCH，MAJOR 由维护者决定。
+插件版本以 `dsh-plugin/package.json` 为准，规范化基线为 **1.0.0**（前身版本为 0.2.0），当前维护版本为 **1.2.0**。新增功能递增 MINOR，修复和小改进递增 PATCH，MAJOR 由维护者决定。
 
-上游 **v11** 是原有移植基线，**2026 版**为新增来源；两者与插件版本无关。宿主入口现为 `index-v12.js`：后缀用于绕开 Loader 旧模块缓存，更新宿主代码时必须递增。
+上游 **v11** 是原有移植基线，**2026 版**为新增来源；两者与插件版本无关。宿主入口现为 `index-v13.js`：后缀用于绕开 Loader 旧模块缓存，更新宿主代码或本地模块时必须同步更新相关缓存标识。
 
 使用已有 Node.js 与 npm，无需安装额外依赖：
 
@@ -115,7 +133,7 @@ npm --prefix dsh-plugin run release
 
 `preview` 在 `http://127.0.0.1:4317` 提供真实 bundle 注入和素材路由的模拟余额页面，可离线验证界面、充值、扣费与卸载重挂载；不访问真实账号。当前验证范围见 [tools/VALIDATION.md](https://github.com/YCTS-otree/VK-1/blob/main/tools/VALIDATION.md)。
 
-发布工具输出 `Release/v<版本>/dsh-plugin/` 与 SHA-256 清单，已有版本目录拒绝覆盖。推荐使用 1.1.1 或更新版本；1.0.0/1.0.1 的历史 SHA-256 清单受 Windows 换行影响，不作为完整性校验依据。版本更新同步 README 和 CHANGELOG。见[维护规则](https://github.com/YCTS-otree/VK-1/blob/main/AGENTS.md)和[贡献说明](https://github.com/YCTS-otree/VK-1/blob/main/CONTRIBUTING.md)。
+发布工具输出 `Release/v<版本>/dsh-plugin/` 与 SHA-256 清单，已有版本目录拒绝覆盖。推荐使用 1.2.0 或更新版本；1.0.0/1.0.1 的历史 SHA-256 清单受 Windows 换行影响，不作为完整性校验依据。版本更新同步 README 和 CHANGELOG。见[维护规则](https://github.com/YCTS-otree/VK-1/blob/main/AGENTS.md)和[贡献说明](https://github.com/YCTS-otree/VK-1/blob/main/CONTRIBUTING.md)。
 
 ## 来源与许可
 

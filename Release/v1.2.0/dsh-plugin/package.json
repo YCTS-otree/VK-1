@@ -1,0 +1,39 @@
+{
+  "name": "dsh-vk1-balance-widget",
+  "version": "1.2.0",
+  "private": true,
+  "description": "VK-1 官方授权维护的 DSH 网页插件：余额平板、扣费与喂饭动画、抚摸、铁盆堆叠、四类音效与本地剪辑库、今日消费和峰谷时钟",
+  "type": "module",
+  "exports": {
+    ".": "./index-v13.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "index-v13.js",
+    "update-checker-v1.js",
+    "asset-sources.json",
+    "widget.js",
+    "cordis.patch.yml",
+    "assets"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "check": "node ../tools/verify.mjs",
+    "preview": "node ../tools/preview.mjs",
+    "release": "node ../tools/release.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YCTS-otree/VK-1.git",
+    "directory": "dsh-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/YCTS-otree/VK-1/issues"
+  },
+  "homepage": "https://github.com/YCTS-otree/VK-1#readme"
+}

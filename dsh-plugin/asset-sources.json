@@ -1,0 +1,137 @@
+{
+  "repository": "https://github.com/VKmich16/VK-1",
+  "revision": "571da3b21b202ecf4fd54635c2adb4a73d3d8bd1",
+  "assets": [
+    {
+      "file": "expression_11.png",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/sprites/expression_11.png",
+      "sourceSha256": "53e3d2c41bca1ca87cf8d9ba345d13260724c3f54263f59bce850343ab7c2d37",
+      "sha256": "53e3d2c41bca1ca87cf8d9ba345d13260724c3f54263f59bce850343ab7c2d37",
+      "processing": "Original upstream bytes, no processing.",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "file": "expression_12.png",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/sprites/expression_12.png",
+      "sourceSha256": "7b0c82e6934018d628bea353eb81b7f75c70cbcdafa7d3437f2fdf90be11339e",
+      "sha256": "7b0c82e6934018d628bea353eb81b7f75c70cbcdafa7d3437f2fdf90be11339e",
+      "processing": "Original upstream bytes, no processing.",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "file": "expression_21.png",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/sprites/expression_21.png",
+      "sourceSha256": "a86377a30d440d1db5a58a70d0762890fd1b31b86e6827ab383f612ef979a336",
+      "sha256": "a86377a30d440d1db5a58a70d0762890fd1b31b86e6827ab383f612ef979a336",
+      "processing": "Original upstream bytes, no processing.",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "file": "expression_22.png",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/sprites/expression_22.png",
+      "sourceSha256": "595bc52671432c69b6f7793772cb3dba27b1add754ac7750748c04cc8e41929f",
+      "sha256": "595bc52671432c69b6f7793772cb3dba27b1add754ac7750748c04cc8e41929f",
+      "processing": "Original upstream bytes, no processing.",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "file": "pat_hand_0.png",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/sprites/pat_hand_0.png",
+      "sourceSha256": "50989a5017f2c82955ea456c25ce14a6c49546b3143c89f049bbe0f2a1458d15",
+      "sha256": "50989a5017f2c82955ea456c25ce14a6c49546b3143c89f049bbe0f2a1458d15",
+      "processing": "Original upstream bytes, no processing.",
+      "width": 446,
+      "height": 392
+    },
+    {
+      "file": "pat_hand_1.png",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/sprites/pat_hand_1.png",
+      "sourceSha256": "3c9e2f63652bc1efaa199c3145ca5f6acb6a0a83131fa9f362bf96fc8f9c230d",
+      "sha256": "3c9e2f63652bc1efaa199c3145ca5f6acb6a0a83131fa9f362bf96fc8f9c230d",
+      "processing": "Original upstream bytes, no processing.",
+      "width": 446,
+      "height": 392
+    },
+    {
+      "file": "pat_hand_2.png",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/sprites/pat_hand_2.png",
+      "sourceSha256": "203b68f261dbc3fbeef49f11a2dcb3bbe0a51a1b48f9bff836a88e1a74b8dce2",
+      "sha256": "203b68f261dbc3fbeef49f11a2dcb3bbe0a51a1b48f9bff836a88e1a74b8dce2",
+      "processing": "Original upstream bytes, no processing.",
+      "width": 446,
+      "height": 392
+    },
+    {
+      "file": "pat_hand_3.png",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/sprites/pat_hand_3.png",
+      "sourceSha256": "03f69db247797823806438b1cfb4ecc61bce2a3ffbf13add52b4d97c6b8ebda7",
+      "sha256": "03f69db247797823806438b1cfb4ecc61bce2a3ffbf13add52b4d97c6b8ebda7",
+      "processing": "Original upstream bytes, no processing.",
+      "width": 446,
+      "height": 392
+    },
+    {
+      "file": "pat_hand_4.png",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/sprites/pat_hand_4.png",
+      "sourceSha256": "fab66e24f3acd3466492f25efb1f361503c163ab294f9fef1e4c4acc6b5ac64d",
+      "sha256": "fab66e24f3acd3466492f25efb1f361503c163ab294f9fef1e4c4acc6b5ac64d",
+      "processing": "Original upstream bytes, no processing.",
+      "width": 446,
+      "height": 392
+    },
+    {
+      "file": "rice.png",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/rice.png",
+      "sourceSha256": "13ec19c6477c3b96bf8af7851d415bcfcca273706cef377b0d41d801149eee02",
+      "sha256": "13ec19c6477c3b96bf8af7851d415bcfcca273706cef377b0d41d801149eee02",
+      "processing": "Original upstream bytes, no processing.",
+      "width": 256,
+      "height": 256
+    },
+    {
+      "file": "iron_bowl.png",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/iron_bowl.png",
+      "sourceSha256": "dcc476092db268f7be1c6bae862560fa754aca77e80d6179fc068b19af46f5e6",
+      "sha256": "dcc476092db268f7be1c6bae862560fa754aca77e80d6179fc068b19af46f5e6",
+      "processing": "Original upstream bytes. At render time trim transparent margins at alpha > 8, without downsampling; source visible bounds [35,920,2846,1920].",
+      "width": 2880,
+      "height": 2880
+    },
+    {
+      "file": "hit.mp3",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/hit.mp3",
+      "sourceSha256": "43fa877b537d8cbfbd676d76109b9a960551bfeae06c62e2d1a7d64d3994cb29",
+      "sha256": "43fa877b537d8cbfbd676d76109b9a960551bfeae06c62e2d1a7d64d3994cb29",
+      "processing": "Original upstream bytes, no processing."
+    },
+    {
+      "file": "feed.mp3",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/feed.mp3",
+      "sourceSha256": "c44abec2ab2ab3165e68add62e577d02f5011e139a00c7ee1e84370311835903",
+      "sha256": "c44abec2ab2ab3165e68add62e577d02f5011e139a00c7ee1e84370311835903",
+      "processing": "Original upstream bytes, no processing."
+    },
+    {
+      "file": "pot_land.mp3",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/pot_land.mp3",
+      "sourceSha256": "41d35ed3982c68abae6b684dc23af2f7fb86a7c71aedf5b0848666ad99fca393",
+      "sha256": "41d35ed3982c68abae6b684dc23af2f7fb86a7c71aedf5b0848666ad99fca393",
+      "processing": "Original upstream bytes, no processing."
+    },
+    {
+      "file": "pot_off.mp3",
+      "source": "大肥鱼桌宠现代化改_D-16BVM（2026）/pot_off.mp3",
+      "sourceSha256": "1a83e306b14e8ac1e7be858f945173ed52564d7f3f1cf64314e254ca353a09ac",
+      "sha256": "1a83e306b14e8ac1e7be858f945173ed52564d7f3f1cf64314e254ca353a09ac",
+      "processing": "Original upstream bytes, no processing."
+    }
+  ],
+  "excluded": {
+    "sprite.png": "Fallback duplicate; all four expression images are present.",
+    "assets/*.ico, tray.ico": "Native desktop window/tray/control icons; web controls use DOM buttons."
+  }
+}

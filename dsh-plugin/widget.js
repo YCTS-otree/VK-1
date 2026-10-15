@@ -8,7 +8,7 @@
  *
  * v11 相对已移植的 v9（原版）新增，全部照搬：
  *   · 四种表情（expression_11 开心 / _22 紧张 / _12 傲娇 / _21 冷脸），按优先级
- *     自动切换——铁盆扣头且无米盆 > 扣费中(含 1s 保持) > 米盆闲置 10s > 开心
+ *     自动切换——2026 版优先级为抚摸 > 零余额 > 铁盆扣头 > 扣费 > 米盆闲置 > 开心
  *   · 充值不再直接改数字：掉一盆米饭，拖到角色身上才入账（掉盆/弹跳/拖拽/碰撞）
  *   · 铁盆：吃掉米盆后掉出，可拖到她头上戴住（换冷脸），双击头部取下
  *   · 火控雷达目标名牌：绿括号 + 「白饭」+ 距离/接近率/相对高度 + 方向环，
@@ -91,6 +91,7 @@
   var EXPR_ORDER = ['happy', 'nervous', 'aloof', 'calm']
   var RICE_URL = BASE + '/rice.png'
   var IRON_URL = BASE + '/iron_bowl.png'
+  var ironDrawUrl = ''
   var HIT_SOUND = BASE + '/hit.mp3'
   var FEED_SOUND = BASE + '/feed.mp3'
   var BALANCE_URL = BASE + '/balance.json'
@@ -125,7 +126,6 @@
 
   var BOWL_WAIT = 10.0
   var LOCK_DELAY = 1.0
-  var NERVOUS_HOLD = 1.0
   var SUCK_ACCEL = 960.0
   var SUCK_MAX = 2400.0
   var GRAVITY = 2100.0
@@ -214,6 +214,8 @@
       'font-size:11.5px;background:var(--dsw-alias-bg-layer-1,#fff);color:var(--dsw-alias-label-primary,#203170);box-sizing:border-box;font-family:inherit}',
     '.dshvk1-menu-num:disabled{opacity:.4;cursor:not-allowed}',
     '.dshvk1-menu-unit{font-size:11px;color:var(--dsw-alias-label-secondary,#7b86a6)}',
+    '.dshvk1-update{position:fixed;right:16px;top:16px;max-width:min(340px,calc(100vw - 32px));padding:14px;border:1px solid #9eafd2;border-radius:12px;background:#f5f8ff;color:#203052;box-shadow:0 8px 24px #0003;z-index:10003;font:14px/1.5 system-ui,sans-serif;box-sizing:border-box}',
+    '.dshvk1-update p{margin:0 0 10px}.dshvk1-update div{display:flex;flex-wrap:wrap;gap:12px;align-items:center}.dshvk1-update a{color:#304fc8}.dshvk1-update button{padding:4px 9px;border:1px solid #9eafd2;border-radius:6px;background:white;color:#203052;cursor:pointer}',
   ].join('\n')
 
   var styleEl = document.createElement('style')
@@ -315,7 +317,6 @@
     hearts: [],
     bowls: [],
     expr: 'happy',
-    nervousT: 0,
     bowlWait: 0,
     lockAll: false,
     lockT: 0,
@@ -510,7 +511,8 @@
   function bowlEl(url, width, height) {
     var el = document.createElement('img')
     el.className = 'dshvk1-bowl'
-    el.src = url
+    el.src = url === IRON_URL && ironDrawUrl ? ironDrawUrl : url
+    if (url === IRON_URL && !potArtReady) el.style.visibility = 'hidden'
     el.draggable = false
     el.style.width = Math.max(8, Math.round(width)) + 'px'
     el.style.height = Math.max(8, Math.round(height)) + 'px'
@@ -991,12 +993,11 @@
     updateHitSource()
   }
   function updateExpression(dt) {
-    if (state.nervousT > 0) state.nervousT -= dt
     var anyBowl = false
     for (var i = 0; i < state.bowls.length; i++) {
       if (!state.bowls[i].fed && !state.bowls[i].iron) { anyBowl = true; break }
     }
-    var cueRunning = chargingBusy()
+    var cueRunning = state.fxHurt && chargingBusy()
     if (anyBowl && !cueRunning && !state.lockAll) state.bowlWait += dt
     else if (!anyBowl) state.bowlWait = 0
 
@@ -1005,14 +1006,12 @@
       if (state.bowls[j].iron && state.bowls[j].onHead && state.bowls[j].fadeT <= 0) { headPotOn = true; break }
     }
     var want
-    // DELIBERATE DEVIATION from upstream: there, a worn pot pins her to the flat face
-    // even while a deduction plays (their own test is named "stillCalmWhileCharging").
-    // Here the charge expression wins, so the planchette still reads as reacting to the
-    // money going out. Calm keeps its place ahead of aloof.
-    if (pat.active) want = 'happy'
-    else if (cueRunning && state.fxHurt) { want = 'nervous'; state.nervousT = NERVOUS_HOLD }
-    else if (state.nervousT > 0) want = 'nervous'
+    // Upstream 2026 UpdateExpression: the pat uses expression_22 (eyes shut),
+    // even with an empty balance. Restore the ordinary state on the next frame.
+    if (pat.active) want = 'nervous'
+    else if (isFinite(state.real) && state.real <= 0.005) want = 'aloof'
     else if (headPotOn && !anyBowl) want = 'calm'
+    else if (cueRunning) want = 'nervous'
     else if (state.bowlWait >= BOWL_WAIT) want = 'aloof'
     else want = 'happy'
     setExpression(want)
@@ -1283,13 +1282,23 @@
     try {
       var probe = new Image()
       probe.onload = function () {
+        if (stopped || hitSrc !== url) return
         try {
+          hitCanvas.getContext('2d').clearRect(0, 0, 610, 610)
           hitCanvas.getContext('2d').drawImage(probe, 0, 0, 610, 610)
           hitReady = true
         } catch (err) {}
       }
       probe.src = url
     } catch (err) {}
+  }
+  function alphaBounds(pixels, width, height) {
+    var x0 = width, y0 = height, x1 = -1, y1 = -1
+    for (var y = 0; y < height; y++) for (var x = 0; x < width; x++) {
+      if (pixels[(y * width + x) * 4 + 3] <= 8) continue
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y)
+    }
+    return x1 < x0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 }
   }
   function setupHitTest() {
     try {
@@ -1300,7 +1309,28 @@
     } catch (err) {}
     try {
       potArt = new Image()
-      potArt.onload = function () { potArtReady = true }
+      potArt.onload = function () {
+        if (stopped) return
+        try {
+          // The authorized HD source is a square canvas with transparent margins.
+          // Match upstream TrimTransparent(alpha > 8), retaining every source pixel.
+          var source = potArt
+          var scan = document.createElement('canvas')
+          scan.width = source.naturalWidth; scan.height = source.naturalHeight
+          var ctx = scan.getContext('2d')
+          ctx.drawImage(source, 0, 0)
+          var pixels = ctx.getImageData(0, 0, scan.width, scan.height).data
+          var bounds = alphaBounds(pixels, scan.width, scan.height)
+          if (!bounds) throw new Error('Empty iron art')
+          var cropped = document.createElement('canvas')
+          cropped.width = bounds.w; cropped.height = bounds.h
+          cropped.getContext('2d').drawImage(source, bounds.x, bounds.y, bounds.w, bounds.h, 0, 0, bounds.w, bounds.h)
+          ironDrawUrl = cropped.toDataURL('image/png')
+          potArt = cropped; potArtReady = true
+          state.bowls.forEach(function (b) { if (b.iron) { b.el.src = ironDrawUrl; b.el.style.visibility = '' } })
+          scan.width = scan.height = 0
+        } catch (err) { showFatal('铁盆高清素材读取失败') }
+      }
       potArt.src = IRON_URL
     } catch (err) {}
   }
@@ -1688,6 +1718,7 @@
   }
   function buildMenu() {
     menu.textContent = ''
+    if (updateStatus && updateStatus.available) menuRow('发现新版本 ' + updateStatus.latestVersion, function () { window.open(updateStatus.url, '_blank', 'noopener,noreferrer') })
     menuRow('立即刷新余额', function () { poll(true) })
     menuRow('演示', function () { showSettings('demo') })
     menuRow('设置', function () { showSettings('display') })
@@ -2217,6 +2248,44 @@
     drawWave()
   }
 
+  var updateStatus = null, updateNotice = null, updateRetryTimer = null, updateBusy = false
+  function showUpdateNotice(status) {
+    if (updateNotice) detach(updateNotice)
+    updateNotice = null
+    if (!status.available) return
+    try { if (localStorage.getItem('dsh-vk1-update-dismissed') === status.latestVersion) return } catch (e) {}
+    updateNotice = document.createElement('aside')
+    updateNotice.className = 'dshvk1-update'
+    updateNotice.setAttribute('role', 'status')
+    var text = document.createElement('p')
+    text.textContent = 'VK-1 有新版本 ' + status.latestVersion + '（当前 ' + status.currentVersion + '）'
+    updateNotice.appendChild(text)
+    var actions = document.createElement('div')
+    var link = document.createElement('a')
+    link.textContent = '查看更新'; link.href = status.url; link.target = '_blank'; link.rel = 'noopener noreferrer'
+    actions.appendChild(link)
+    var dismiss = document.createElement('button')
+    dismiss.textContent = '稍后'
+    dismiss.addEventListener('click', function () {
+      try { localStorage.setItem('dsh-vk1-update-dismissed', status.latestVersion) } catch (e) {}
+      detach(updateNotice); updateNotice = null
+    })
+    actions.appendChild(dismiss); updateNotice.appendChild(actions)
+    document.body.appendChild(updateNotice)
+  }
+  function refreshUpdateStatus() {
+    if (stopped || updateBusy) return
+    updateBusy = true
+    fetch(BASE + '/update.json', { cache: 'no-store' }).then(function (r) { return r.json() }).then(function (status) {
+      if (stopped || !status || !status.ok) return
+      // Only links to the maintained repository are accepted from the local status route.
+      status.url = 'https://github.com/YCTS-otree/VK-1'
+      if (!updateStatus || updateStatus.latestVersion !== status.latestVersion || updateStatus.available !== status.available) showUpdateNotice(status)
+      updateStatus = status
+      if (status.checking) updateRetryTimer = setTimeout(refreshUpdateStatus, 3000)
+    }).catch(function () {}).finally(function () { updateBusy = false })
+  }
+
   // ----------------------------------------------------------------- start ---
   try {
     var savedSize = parseInt(localStorage.getItem(SIZE_KEY) || '', 10)
@@ -2247,6 +2316,8 @@
   rafId = requestAnimationFrame(frame)
   poll(false)
   var pollTimer = setInterval(function () { poll(false) }, POLL_MS)
+  refreshUpdateStatus()
+  var updatePollTimer = setInterval(refreshUpdateStatus, 60000)
 
   // ------------------------------------------------- live mount/unmount hook ---
   // The appearance manager mounts this script when the bundle is enabled and asks
@@ -2259,6 +2330,7 @@
     stopped = true
     try { cancelAnimationFrame(rafId) } catch (err) {}
     try { clearInterval(pollTimer) } catch (err) {}
+    clearInterval(updatePollTimer); clearTimeout(updateRetryTimer)
     if (btnHideTimer) { clearTimeout(btnHideTimer); btnHideTimer = null }
     document.removeEventListener('pointerdown', onDown, true)
     document.removeEventListener('pointermove', onCursor, true)
@@ -2276,6 +2348,7 @@
     detach(root)
     detach(menu)
     detach(settings)
+    detach(updateNotice)
     stopAudio()
     if (soundDb) soundDb.close()
     window.__dshVk1Widget = false

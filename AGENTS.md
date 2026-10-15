@@ -17,7 +17,8 @@
 
 ## 兼容与验证
 - 保持 dsh-plugin/ 安装路径，保留 MIT 声明与素材来源。
-- 当前入口 index-v12.js 的后缀是 Loader 缓存标识，与插件语义版本无关。修改宿主代码时递增入口后缀，避免运行中的 DSH 沿用旧模块；同步 exports、files、cordis.patch.yml 和预览工具入口。
+- 当前入口 index-v13.js 的后缀是 Loader 缓存标识，与插件语义版本无关。修改宿主代码或其本地模块时递增对应模块的缓存标识，避免运行中的 DSH 沿用旧模块；同步 exports、files、cordis.patch.yml 和预览工具入口。
+- 图像与音效来源、原始尺寸及校验值登记在 dsh-plugin/asset-sources.json；优先分发上游高清原文件，透明留白在绘制时按上游规则处理。
 - 文档 UTF-8 无 BOM + LF，不改写历史平台文件编码。
 - 使用已有 Node.js/npm，提交前运行 npm --prefix dsh-plugin run check。
 - 发布运行 npm --prefix dsh-plugin run release，拒绝覆盖已存在版本。
